@@ -24,9 +24,10 @@ To reshape ownership in crypto by combining algorithmic intelligence with human 
 
 - Cryptocurrency lacks tangible presence, making long-term emotional ownership harder to sustain.
 - Bitcoin has a fixed supply mechanism which will detain in a matter of 10 years (approx 2030-2035) which having to decrease the rewarding system. Which will decrease security
-  as having the miners relying on the transaction fees as a revenue based
-- Ethereum obtains a base fee (EIP 1559), which delegates an extra fee for any ordinary user that has to pay in order to deflate the ETH.  
-- Volatility discourages real-world utility and stable adoption.  
+  as having the miners relying on the transaction fees as a revenue based.
+- Ethereum obtains a base fee (EIP 1559), which increments an extra fee for any ordinary user that has to pay in order to deflate ETH.  
+- Volatility discourages real-world utility and stable adoption.
+- Value uncertainty, expecially for bitcoin. 
 - Cold wallets are functionally secure, but lack personality, reward mechanics, and community involvement.
 
 ### ✅ Solution
