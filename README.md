@@ -1,3 +1,8 @@
+© 2025 Taha Hasan. All rights reserved.
+
+This whitepaper is the intellectual property of [Taha Hasan]. Unauthorized copying, redistribution, or commercial use is strictly prohibited without written permission.
+
+
 # 🧾 Whitepaper for Transcript (TCRIPT)
 *NOTE: THIS IS A DEMO OF THE VISION, LATER IN THE FUTURE. IT MIGHT BE ADJUSTED*
 
@@ -170,4 +175,4 @@ First, let's focus on launching the *MVP launch (TCRIPT smart contract, wallet t
 
 Transcript (TCRIPT) introduces a hybrid vision of crypto — one that acknowledges digital freedom while bringing back tangible presence and ownership. Through AI-driven economy balancing and real-world collectible value, this system transforms crypto from a speculative tool into an expressive, community-empowered economic identity.
 
-By Taha Hasan. Licensed and permissioned
+By Taha Hasan. All rights reserved.
