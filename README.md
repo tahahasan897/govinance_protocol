@@ -22,8 +22,10 @@ To reshape ownership in crypto by combining algorithmic intelligence with human 
 
 ### 🔧 Problem Statement
 
-- Cryptocurrency lacks tangible presence, making long-term emotional ownership harder to sustain.  
-- Ethereum obtains a base fee, which delegates an extra fee for any ordinary user that has to pay in order to deflate the ETH.  
+- Cryptocurrency lacks tangible presence, making long-term emotional ownership harder to sustain.
+- Bitcoin has a fixed supply mechanism which will detain in a matter of 10 years (approx 2030-2035) which having to decrease the rewarding system. Which will decrease security
+  as having the miners relying on the transaction fees as a revenue based
+- Ethereum obtains a base fee (EIP 1559), which delegates an extra fee for any ordinary user that has to pay in order to deflate the ETH.  
 - Volatility discourages real-world utility and stable adoption.  
 - Cold wallets are functionally secure, but lack personality, reward mechanics, and community involvement.
 
@@ -32,7 +34,7 @@ To reshape ownership in crypto by combining algorithmic intelligence with human 
 Transcript introduces:
 
 - A dual economy: digital Version (TCRIPT) and physical V1 wallets.
-- AI-controlled supply that adjusts minting and burning to stabilize market dynamics.  
+- AI-controlled supply that adjusts minting and burning to stabilize market dynamics.
   The AI doesn’t have to include a base fee, since it can operate and calculate at a high level of how much supply can be contributed to the community without letting the transactor pay additionally.
 - A threshold-based adjustment redemption model: owning enough digital TCRIPT earns you the physical V1.
 - Physical assets are non-purchasable (initially), increasing scarcity and reward value.
