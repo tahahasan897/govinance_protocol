@@ -1,6 +1,6 @@
 © 2025 Taha Hasan. All rights reserved.
 
-This whitepaper is the intellectual property of [Taha Hasan]. Unauthorized copying, redistribution, or commercial use is strictly prohibited without written permission.
+This whitepaper is the intellectual property of Taha Hasan. Unauthorized copying, redistribution, or commercial use is strictly prohibited without written permission.
 
 
 # 🧾 Whitepaper for Transcript (TCRIPT)
