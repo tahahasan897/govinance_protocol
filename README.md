@@ -32,7 +32,7 @@ To reshape ownership in crypto by combining algorithmic intelligence with human 
   as having the miners relying on the transaction fees as a revenue based.
 - Ethereum obtains a base fee (EIP 1559), which increments an extra fee for any ordinary user that has to pay in order to deflate ETH.  
 - Volatility discourages real-world utility and stable adoption.
-- Value uncertainty, expecially for bitcoin. 
+- Value uncertainty, especially for bitcoin. 
 - Cold wallets are functionally secure, but lack personality, reward mechanics, and community involvement.
 
 ### ✅ Solution
