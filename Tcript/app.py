@@ -4,17 +4,25 @@ import json
 import os
 from dotenv import load_dotenv
 
+# Always load environment variables from the repository root
 load_dotenv("necessities.env")
-# Config
-# RPC_URL = os.getenv("RPC_URL")
+
+# Configuration
+RPC_URL = os.getenv("RPC_URL")
+CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 
 app = Flask(__name__)
-w3 = Web3(Web3.HTTPProvider("https://eth-sepolia.g.alchemy.com/v2/ZZ0o3ElccCRecnfKBeD4sFZY6hN4haL0"))
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-with open('abi.json') as f:
+# Load the ABI relative to this file so running from other directories works
+ABI_PATH = os.path.join(os.path.dirname(__file__), "abi.json")
+with open(ABI_PATH) as f:
     abi = json.load(f)
 
-contract = w3.eth.contract(address="0x543CF24b644695BEd037BaACF93f6c04159BAC38", abi=abi)
+if not CONTRACT_ADDRESS:
+    raise EnvironmentError("CONTRACT_ADDRESS is not set in environment")
+
+contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=abi)
 
 @app.route("/")
 def index():
