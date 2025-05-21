@@ -2,3 +2,6 @@ web3
 flask
 requests
 python-dotenv
+flask-cors
+flask-socketio
+
