@@ -30,11 +30,20 @@ contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), a
 
 @app.route("/")
 def index():
-    total_supply = contract.functions.totalSupply().call()
-    return render_template_string("""
+    try:
+        total_supply = contract.functions.totalSupply().call()
+        supply = w3.from_wei(total_supply, "ether")
+    except Exception as exc:  # handle RPC or contract failures gracefully
+        app.logger.error("Failed to fetch totalSupply: %s", exc)
+        supply = "Unavailable"
+
+    return render_template_string(
+        """
     <h1>AI-Controlled Crypto Supply</h1>
     <p>Total Supply: {{ supply }}</p>
-    """, supply=w3.from_wei(total_supply, 'ether'))
+    """,
+        supply=supply,
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

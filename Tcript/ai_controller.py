@@ -5,7 +5,11 @@ import json
 import os
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="necessities.env")
+# Load environment variables from repository root so the script works regardless
+# of the current working directory.
+REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
+load_dotenv(dotenv_path=ENV_PATH)
 
 # Config
 RPC_URL = os.getenv("RPC_URL")
@@ -16,16 +20,26 @@ WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 # Connect
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-# Load ABI
-with open('abi.json') as f:
+# Load ABI relative to this file so path works regardless of CWD
+ABI_PATH = os.path.join(os.path.dirname(__file__), "abi.json")
+with open(ABI_PATH) as f:
     abi = json.load(f)
 
 contract = web3.eth.contract(address=CONTRACT_ADDRESS, abi=abi)
 
 # AI Logic (Simple Rule)
 def get_decision():
-    response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd")
-    eth_price = response.json()["ethereum"]["usd"]
+    """Return an integer supply adjustment decision based on ETH price."""
+    try:
+        response = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+            timeout=10,
+        )
+        response.raise_for_status()
+        eth_price = response.json()["ethereum"]["usd"]
+    except Exception as exc:
+        print(f"Failed to fetch price data: {exc}")
+        return 0
 
     # Fake volatility logic
     if eth_price > 3000:
