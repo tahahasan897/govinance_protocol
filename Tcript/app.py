@@ -28,6 +28,7 @@ if not CONTRACT_ADDRESS:
 
 contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=abi)
 
+
 @app.route("/")
 def index():
     try:
@@ -44,6 +45,7 @@ def index():
     """,
         supply=supply,
     )
+
 
 if __name__ == "__main__":
     app.run(debug=True)

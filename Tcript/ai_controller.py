@@ -13,7 +13,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 
 # Config
 RPC_URL = os.getenv("RPC_URL")
-CONTRACT_ADDRESS = "0xa7662466353BC9543a9e3Dcc4128E8DC070BB999"
+CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 
@@ -25,7 +25,14 @@ ABI_PATH = os.path.join(os.path.dirname(__file__), "abi.json")
 with open(ABI_PATH) as f:
     abi = json.load(f)
 
-contract = web3.eth.contract(address=CONTRACT_ADDRESS, abi=abi)
+if not CONTRACT_ADDRESS:
+    raise EnvironmentError("CONTRACT_ADDRESS is not set in environment")
+
+contract = web3.eth.contract(
+    address=Web3.to_checksum_address(CONTRACT_ADDRESS),
+    abi=abi,
+)
+
 
 # AI Logic (Simple Rule)
 def get_decision():
@@ -49,18 +56,22 @@ def get_decision():
     else:
         return 0  # No change
 
+
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
-    txn = contract.functions.adjustSupply(percent).build_transaction({
-        'chainId': 11155111,  # Sepolia chain ID
-        'gas': 200000,
-        'gasPrice': web3.to_wei('20', 'gwei'),
-        'nonce': nonce
-    })
+    txn = contract.functions.adjustSupply(percent).build_transaction(
+        {
+            "chainId": 11155111,  # Sepolia chain ID
+            "gas": 200000,
+            "gasPrice": web3.to_wei("20", "gwei"),
+            "nonce": nonce,
+        }
+    )
 
     signed_txn = web3.eth.account.sign_transaction(txn, private_key=PRIVATE_KEY)
     tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
     print(f"Sent transaction: {web3.to_hex(tx_hash)}")
+
 
 if __name__ == "__main__":
     decision = get_decision()
