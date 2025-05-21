@@ -5,7 +5,11 @@ import os
 from dotenv import load_dotenv
 
 # Always load environment variables from the repository root
-load_dotenv("necessities.env")
+# Determine the repository root relative to this file so the
+# application works regardless of the current working directory.
+REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
+load_dotenv(ENV_PATH)
 
 # Configuration
 RPC_URL = os.getenv("RPC_URL")
