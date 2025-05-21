@@ -16,7 +16,7 @@ RPC_URL = os.getenv("RPC_URL")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 
 app = Flask(__name__)
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
+w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 5}))
 
 # Load the ABI relative to this file so running from other directories works
 ABI_PATH = os.path.join(os.path.dirname(__file__), "abi.json")
