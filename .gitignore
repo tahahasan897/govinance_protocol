@@ -10,6 +10,7 @@ venv/
 
 # Environment variables
 .env
+necessities.env
 
 # IDE/editor settings
 .vscode/

@@ -2,8 +2,3 @@ date,totalSupply
 2024-01-01,1000000
 2024-02-01,1010000
 2024-03-01,1025000
-<<<<<<< HEAD
-2024-04-01,1030000
-=======
-2024-04-01,1030000
->>>>>>> 500945b (Fix /supply-data route, add Chart.js debugging logs)
