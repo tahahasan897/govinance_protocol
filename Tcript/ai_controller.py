@@ -69,11 +69,16 @@ def send_transaction(percent):
     )
 
     signed_txn = web3.eth.account.sign_transaction(txn, private_key=PRIVATE_KEY)
-    tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
     print(f"Sent transaction: {web3.to_hex(tx_hash)}")
 
 
 if __name__ == "__main__":
     decision = get_decision()
+    print(f"[AI DECISION] Returned: {decision}%")
+
     if decision != 0:
+        print("[ACTION] Sending transaction to adjust supply...")
         send_transaction(decision)
+    else:
+        print("[ACTION] No change — holding supply steady.")
