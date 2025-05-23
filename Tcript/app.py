@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, send_from_directory
 from web3 import Web3
 import json
 import os
@@ -7,7 +7,10 @@ from dotenv import load_dotenv
 # Always load environment variables from the repository root
 # Determine the repository root relative to this file so the
 # application works regardless of the current working directory.
-REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+# Resolve paths relative to this file so the app works regardless of the
+# current working directory. ``__file__`` may be relative when the script is
+# executed directly, so convert it to an absolute path first.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
 load_dotenv(ENV_PATH)
 
@@ -29,19 +32,73 @@ if not CONTRACT_ADDRESS:
 contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=abi)
 
 
+@app.route("/supply-data")
+def supply_data():
+    """Serve CSV file containing historical total supply data."""
+    data_dir = os.path.join(REPO_ROOT, "data")
+    return send_from_directory(data_dir, "supply.csv")
+
+
 @app.route("/")
 def index():
     try:
         total_supply = contract.functions.totalSupply().call()
-        supply = w3.from_wei(total_supply, "ether")
-    except Exception as exc:  # handle RPC or contract failures gracefully
-        app.logger.error("Failed to fetch totalSupply: %s", exc)
+        # The contract stores totalSupply in wei-like units (18 decimals).
+        # Display the raw integer value to match the on-chain view function.
+        supply = str(total_supply)
+    except Exception:
+        import traceback
+        print("Exception fetching totalSupply:\n", traceback.format_exc())
         supply = "Unavailable"
 
     return render_template_string(
         """
-    <h1>AI-Controlled Crypto Supply</h1>
-    <p>Total Supply: {{ supply }}</p>
+    <!doctype html>
+    <html>
+    <head>
+        <title>AI-Controlled Crypto Supply</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body>
+        <h1>AI-Controlled Crypto Supply</h1>
+        <p>Total Supply: {{ supply }}</p>
+        <canvas id="supplyChart" width="400" height="200"></canvas>
+        <script>
+            fetch('/supply-data')
+                .then(resp => resp.text())
+                .then(text => {
+                    const rows = text.trim().split('\n').slice(1);
+                    const labels = [];
+                    const data = [];
+                    rows.forEach(row => {
+                        const parts = row.split(',');
+                        labels.push(parts[0]);
+                        data.push(Number(parts[1]));
+                    });
+                    new Chart(document.getElementById('supplyChart'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Total Supply',
+                                data: data,
+                                borderColor: 'blue',
+                                tension: 0.1,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
+        </script>
+    </body>
+    </html>
     """,
         supply=supply,
     )
