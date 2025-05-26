@@ -1,0 +1,20 @@
+{
+  "name": "subgraph",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "update-subgraph": "node scripts/updateSubgraph.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.97.1",
+    "@graphprotocol/graph-ts": "^0.38.1",
+    "assemblyscript": "^0.27.36",
+    "js-yaml": "^4.1.0",
+    "dotenv": "^16"
+  }
+}

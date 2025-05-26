@@ -34,28 +34,40 @@ contract = web3.eth.contract(
 )
 
 
+def get_token_volume():
+    """Fetch the latest daily transfer volume from The Graph."""
+    url = "https://api.thegraph.com/subgraphs/name/tahatxt/transcript-tcript"
+    query = """
+    {
+      dailyVolumes(first: 1, orderBy: id, orderDirection: desc) {
+        id
+        volume
+      }
+    }
+    """
+    try:
+        resp = requests.post(url, json={"query": query}, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        latest = data["data"]["dailyVolumes"][0]
+        vol_tokens = int(latest["volume"]) / 10**18
+        print(f"Daily volume for id {latest['id']}: {vol_tokens} tokens")
+        return vol_tokens
+    except Exception as exc:
+        print(f"Error fetching token volume: {exc}")
+        return 0.0
+    
+
 # AI Logic (Simple Rule)
 def get_decision():
-    """Return an integer supply adjustment decision based on ETH price."""
-    try:
-        response = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
-            timeout=10,
-        )
-        response.raise_for_status()
-        eth_price = response.json()["ethereum"]["usd"]
-    except Exception as exc:
-        print(f"Failed to fetch price data: {exc}")
-        return 0
-
-    # Fake volatility logic
-    if eth_price > 3000:
-        return 2  # Mint 2%
-    elif eth_price < 1500:
-        return -1  # Burn 1%
-    else:
-        return 0  # No change
-
+        """Return an integer supply adjustment decision based on token volume."""
+        volume = get_token_volume()
+        if volume > 100_000:
+            return 2
+        elif volume < 5_000:
+            return -1
+        else:
+            return 0
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)

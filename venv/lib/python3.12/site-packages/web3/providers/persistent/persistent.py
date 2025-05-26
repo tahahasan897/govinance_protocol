@@ -24,7 +24,6 @@ from websockets import (
 
 from web3._utils.batching import (
     BATCH_REQUEST_ID,
-    async_batching_context,
     sort_batch_response_by_response_ids,
 )
 from web3._utils.caching import (
@@ -71,16 +70,16 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
 
     _send_func_cache: Tuple[
         Optional[int], Optional[Callable[..., Coroutine[Any, Any, RPCRequest]]]
-    ] = (
-        None,
-        None,
-    )
+    ] = (None, None)
     _recv_func_cache: Tuple[
         Optional[int], Optional[Callable[..., Coroutine[Any, Any, RPCResponse]]]
-    ] = (
-        None,
-        None,
-    )
+    ] = (None, None)
+    _send_batch_func_cache: Tuple[
+        Optional[int], Optional[Callable[..., Coroutine[Any, Any, List[RPCRequest]]]]
+    ] = (None, None)
+    _recv_batch_func_cache: Tuple[
+        Optional[int], Optional[Callable[..., Coroutine[Any, Any, List[RPCResponse]]]]
+    ] = (None, None)
 
     def __init__(
         self,
@@ -98,12 +97,13 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
             request_information_cache_size=request_information_cache_size,
         )
         self._message_listener_task: Optional["asyncio.Task[None]"] = None
-        self._batch_request_counter: Optional[int] = None
         self._listen_event: asyncio.Event = asyncio.Event()
         self._max_connection_retries = max_connection_retries
 
         self.request_timeout = request_timeout
         self.silence_listener_task_exceptions = silence_listener_task_exceptions
+
+    # -- cached middleware request/response functions -- #
 
     async def send_func(
         self, async_w3: "AsyncWeb3", middleware_onion: "MiddlewareOnion"
@@ -155,6 +155,60 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
 
         return self._recv_func_cache[1]
 
+    async def send_batch_func(
+        self, async_w3: "AsyncWeb3", middleware_onion: "MiddlewareOnion"
+    ) -> Callable[..., Coroutine[Any, Any, List[RPCRequest]]]:
+        middleware = middleware_onion.as_tuple_of_middleware()
+        cache_key = hash(tuple(id(mw) for mw in middleware))
+
+        if cache_key != self._send_batch_func_cache[0]:
+
+            async def send_func(
+                requests: List[Tuple[RPCEndpoint, Any]]
+            ) -> List[RPCRequest]:
+                for mw in middleware:
+                    initialized = mw(async_w3)
+                    requests = [
+                        await initialized.async_request_processor(method, params)
+                        for (method, params) in requests
+                    ]
+                return await self.send_batch_request(requests)
+
+            self._send_batch_func_cache = (cache_key, send_func)
+
+        return self._send_batch_func_cache[1]
+
+    async def recv_batch_func(
+        self, async_w3: "AsyncWeb3", middleware_onion: "MiddlewareOnion"
+    ) -> Callable[..., Coroutine[Any, Any, List[RPCResponse]]]:
+        middleware = middleware_onion.as_tuple_of_middleware()
+        cache_key = hash(tuple(id(mw) for mw in middleware))
+
+        if cache_key != self._recv_batch_func_cache[0]:
+
+            async def recv_function(
+                rpc_requests: List[RPCRequest],
+            ) -> List[RPCResponse]:
+                methods = [rpc_request["method"] for rpc_request in rpc_requests]
+                responses = await self.recv_for_batch_request(rpc_requests)
+                for mw in reversed(middleware):
+                    if not isinstance(responses, list):
+                        # RPC errors return only one response with the error object
+                        return responses
+
+                    initialized = mw(async_w3)
+                    responses = [
+                        await initialized.async_response_processor(m, r)
+                        for m, r in zip(methods, responses)
+                    ]
+                return responses
+
+            self._recv_batch_func_cache = (cache_key, recv_function)
+
+        return self._recv_batch_func_cache[1]
+
+    # -- connection management -- #
+
     def get_endpoint_uri_or_ipc_path(self) -> str:
         if hasattr(self, "endpoint_uri"):
             return str(self.endpoint_uri)
@@ -167,6 +221,7 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
             )
 
     async def connect(self) -> None:
+        endpoint = self.get_endpoint_uri_or_ipc_path()
         _connection_attempts = 0
         _backoff_rate_change = 1.75
         _backoff_time = 1.75
@@ -174,9 +229,7 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
         while _connection_attempts != self._max_connection_retries:
             try:
                 _connection_attempts += 1
-                self.logger.info(
-                    f"Connecting to: {self.get_endpoint_uri_or_ipc_path()}"
-                )
+                self.logger.info("Connecting to: %s", endpoint)
                 await self._provider_specific_connect()
                 self._message_listener_task = asyncio.create_task(
                     self._message_listener()
@@ -184,19 +237,18 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
                 self._message_listener_task.add_done_callback(
                     self._message_listener_callback
                 )
-                self.logger.info(
-                    f"Successfully connected to: {self.get_endpoint_uri_or_ipc_path()}"
-                )
+                self.logger.info("Successfully connected to: %s", endpoint)
                 break
             except (WebSocketException, OSError) as e:
                 if _connection_attempts == self._max_connection_retries:
                     raise ProviderConnectionError(
-                        f"Could not connect to: {self.get_endpoint_uri_or_ipc_path()}. "
+                        f"Could not connect to: {endpoint}. "
                         f"Retries exceeded max of {self._max_connection_retries}."
                     ) from e
                 self.logger.info(
-                    f"Could not connect to: {self.get_endpoint_uri_or_ipc_path()}. "
-                    f"Retrying in {round(_backoff_time, 1)} seconds.",
+                    "Could not connect to: %s. Retrying in %s seconds.",
+                    endpoint,
+                    round(_backoff_time, 1),
                     exc_info=True,
                 )
                 await asyncio.sleep(_backoff_time)
@@ -217,8 +269,11 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
         await self._provider_specific_disconnect()
         self._request_processor.clear_caches()
         self.logger.info(
-            f"Successfully disconnected from: {self.get_endpoint_uri_or_ipc_path()}"
+            "Successfully disconnected from: %s",
+            self.get_endpoint_uri_or_ipc_path(),
         )
+
+    # -- request methods -- #
 
     @async_handle_send_caching
     async def send_request(self, method: RPCEndpoint, params: Any) -> RPCRequest:
@@ -238,19 +293,32 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
         rpc_request = await self.send_request(method, params)
         return await self.recv_for_request(rpc_request)
 
-    @async_batching_context
-    async def make_batch_request(
-        self, requests: List[Tuple[RPCEndpoint, Any]]
-    ) -> List[RPCResponse]:
-        request_data = self.encode_batch_rpc_request(requests)
-        await self.socket_send(request_data)
+    # -- batch requests -- #
 
-        # breakpoint()
+    async def send_batch_request(
+        self, requests: List[Tuple[RPCEndpoint, Any]]
+    ) -> List[RPCRequest]:
+        request_dicts = [
+            self.form_request(method, params) for (method, params) in requests
+        ]
+        request_data = self.encode_batch_request_dicts(request_dicts)
+        await self.socket_send(request_data)
+        return request_dicts
+
+    async def recv_for_batch_request(
+        self, _request_dicts: List[RPCRequest]
+    ) -> List[RPCResponse]:
         response = cast(
             List[RPCResponse],
             await self._get_response_for_request_id(BATCH_REQUEST_ID),
         )
         return response
+
+    async def make_batch_request(
+        self, requests: List[Tuple[RPCEndpoint, Any]]
+    ) -> List[RPCResponse]:
+        request_dicts = await self.send_batch_request(requests)
+        return await self.recv_for_batch_request(request_dicts)
 
     # -- abstract methods -- #
 
@@ -320,26 +388,26 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
         Check the request response cache for any errors not tied to current requests
         and raise them if found.
         """
-        if not self._is_batching:
-            for (
-                response
-            ) in self._request_processor._request_response_cache._data.values():
-                if isinstance(response, dict):
+        for response in self._request_processor._request_response_cache._data.values():
+            if isinstance(response, dict):
+                if "id" not in response:
+                    validate_rpc_response_and_raise_if_error(
+                        cast(RPCResponse, response), None, logger=self.logger
+                    )
+                else:
                     request = self._request_processor._request_information_cache.get_cache_entry(  # noqa: E501
                         generate_cache_key(response["id"])
                     )
                     if "error" in response and request is None:
-                        # if we find an error response in the cache without a
-                        # corresponding request, raise the error
                         validate_rpc_response_and_raise_if_error(
                             cast(RPCResponse, response), None, logger=self.logger
                         )
 
     async def _message_listener(self) -> None:
         self.logger.info(
-            f"{self.__class__.__qualname__} listener background task started. Storing "
-            "all messages in appropriate request processor queues / caches to be "
-            "processed."
+            "%s listener background task started. Storing all messages in "
+            "appropriate request processor queues / caches to be processed.",
+            self.__class__.__qualname__,
         )
         while True:
             # the use of sleep(0) seems to be the most efficient way to yield control
@@ -363,8 +431,8 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
                 self._raise_stray_errors_from_cache()
             except PersistentConnectionClosedOK as e:
                 self.logger.info(
-                    "Message listener background task has ended gracefully: "
-                    f"{e.user_message}"
+                    "Message listener background task has ended gracefully: %s",
+                    e.user_message,
                 )
                 # trigger a return to end the listener task and initiate the callback fn
                 return
@@ -382,8 +450,9 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
         """
         self.logger.error(
             "Exception caught in listener, error logging and keeping "
-            "listener background task alive."
-            f"\n    error={e.__class__.__name__}: {e}"
+            "listener background task alive.\n    error=%s: %s",
+            e.__class__.__name__,
+            e,
         )
 
     def _handle_listener_task_exceptions(self) -> None:
@@ -416,7 +485,8 @@ class PersistentConnectionProvider(AsyncJSONBaseProvider, ABC):
 
                 if request_cache_key in self._request_processor._request_response_cache:
                     self.logger.debug(
-                        f"Popping response for id {request_id} from cache."
+                        "Popping response for id %s from cache.",
+                        request_id,
                     )
                     popped_response = await self._request_processor.pop_raw_response(
                         cache_key=request_cache_key,

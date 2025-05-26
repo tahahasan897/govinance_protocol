@@ -40,6 +40,7 @@ def skipIf(condition):
     return lambda f: f
 
 SYSINFO = _sysinfo()
+PTRSIZE = SYSINFO[0]  # pointer size in bytes
 DEBUG = SYSINFO[6]
 
 if DEBUG:
@@ -178,15 +179,22 @@ class ModuleFunctionsTests(unittest.TestCase, Util):
 
     def test_sysinfo(self):
         info = _sysinfo()
+        self.assertEqual(info[0], PTRSIZE)
+        self.assertEqual(info[1], PTRSIZE)
+
         self.assertIsInstance(info, tuple)
         for x in info:
             self.assertIsInstance(x, int)
 
-        if not is_pypy:
-            self.assertEqual(info[0], tuple.__itemsize__)
         self.assertEqual(info[7], int(sys.byteorder == 'little'))
         self.assertEqual(info[8], int(sys.byteorder == 'big'))
-        self.assertEqual(info[7] + info[8], 1)
+
+    @skipIf(is_pypy)  # PyPy doesn't have tuple.__itemsize__
+    def test_ptrsize(self):
+        self.assertEqual(PTRSIZE, tuple.__itemsize__)
+
+    def test_maxsize(self):
+        self.assertEqual(sys.maxsize, 2 ** (PTRSIZE * 8 - 1) - 1)
 
     def test_set_default_endian(self):
         self.assertRaises(TypeError, _set_default_endian, 0)
@@ -1894,7 +1902,7 @@ class MiscTests(unittest.TestCase, Util):
         a = bitarray(1 << 10)
         self.assertRaises(OverflowError, a.__imul__, 1 << 53)
 
-    @skipIf(SYSINFO[0] != 4 or is_pypy)
+    @skipIf(PTRSIZE != 4 or is_pypy)
     def test_overflow_32bit(self):
         a = bitarray(1000_000)
         self.assertRaises(OverflowError, a.__imul__, 17180)
@@ -3017,10 +3025,13 @@ class InvertTests(unittest.TestCase, Util):
         a = bitarray('11011')
         a.invert()
         self.assertEQUAL(a, bitarray('00100'))
-        a.invert(2)
-        self.assertEQUAL(a, bitarray('00000'))
-        a.invert(-1)
-        self.assertEQUAL(a, bitarray('00001'))
+        for i, res in [( 0, '10100'),
+                       ( 4, '10101'),
+                       ( 2, '10001'),
+                       (-1, '10000'),
+                       (-5, '00000')]:
+            a.invert(i)
+            self.assertEqual(a.to01(), res)
 
     def test_errors(self):
         a = bitarray(5)
@@ -3033,23 +3044,23 @@ class InvertTests(unittest.TestCase, Util):
 
     def test_random(self):
         for a in self.randombitarrays(start=1):
+            n = len(a)
             b = a.copy()
             c = a.copy()
-            i = randrange(len(a))
+            i = randint(-n, n - 1)
             a[i] = not a[i]
             b.invert(i)
             self.assertEQUAL(b, a)
-            c.invert(slice(i, i + 1))
-            self.assertEQUAL(c, a)
+            self.check_obj(b)
 
     def test_all(self):
         for a in self.randombitarrays():
-            res = bitarray([not v for v in a])
             b = a.copy()
-            a.invert(slice(None))
-            self.assertEqual(a, res)
-            b.invert()
-            self.assertEqual(b, res)
+            a.invert()
+            self.assertEqual(a, bitarray([not v for v in b]))
+            self.assertEqual(a.endian, b.endian)
+            self.check_obj(a)
+            self.assertEQUAL(b, ~a)
 
     def test_span(self):
         for a in self.randombitarrays():

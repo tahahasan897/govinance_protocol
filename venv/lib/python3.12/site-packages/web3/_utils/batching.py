@@ -1,9 +1,3 @@
-from copy import (
-    copy,
-)
-from functools import (
-    wraps,
-)
 from types import (
     TracebackType,
 )
@@ -15,11 +9,8 @@ from typing import (
     Dict,
     Generic,
     List,
-    Protocol,
-    Sequence,
     Tuple,
     Type,
-    TypeVar,
     Union,
     cast,
 )
@@ -28,17 +19,10 @@ import warnings
 from web3._utils.compat import (
     Self,
 )
-from web3.contract.async_contract import (
-    AsyncContractFunction,
-)
-from web3.contract.contract import (
-    ContractFunction,
-)
 from web3.exceptions import (
     Web3ValueError,
 )
 from web3.types import (
-    RPCEndpoint,
     TFunc,
     TReturn,
 )
@@ -47,6 +31,12 @@ if TYPE_CHECKING:
     from web3 import (  # noqa: F401
         AsyncWeb3,
         Web3,
+    )
+    from web3.contract.async_contract import (
+        AsyncContractFunction,
+    )
+    from web3.contract.contract import (
+        ContractFunction,
     )
     from web3.method import (  # noqa: F401
         Method,
@@ -61,13 +51,14 @@ if TYPE_CHECKING:
         JSONBaseProvider,
     )
     from web3.types import (  # noqa: F401
+        RPCEndpoint,
         RPCResponse,
     )
 
 
 BATCH_REQUEST_ID = "batch_request"  # for use as the cache key for batch requests
 
-BatchRequestInformation = Tuple[Tuple["RPCEndpoint", Any], Sequence[Any]]
+BatchRequestInformation = Tuple[Tuple["RPCEndpoint", Any], Tuple[Any, ...]]
 RPC_METHODS_UNSUPPORTED_DURING_BATCH = {
     "eth_subscribe",
     "eth_unsubscribe",
@@ -104,21 +95,18 @@ class RequestBatcher(Generic[TFunc]):
             )
 
     def _initialize_batching(self) -> None:
-        self._provider._is_batching = True
+        self._provider._batching_context.set(self)
         self.clear()
 
     def _end_batching(self) -> None:
         self.clear()
-        self._provider._is_batching = False
-        if self._provider.has_persistent_connection:
-            provider = cast("PersistentConnectionProvider", self._provider)
-            provider._batch_request_counter = None
+        self._provider._batching_context.set(None)
 
     def add(self, batch_payload: TReturn) -> None:
         self._validate_is_batching()
 
-        if isinstance(batch_payload, (ContractFunction, AsyncContractFunction)):
-            batch_payload = batch_payload.call()  # type: ignore
+        if hasattr(batch_payload, "call"):
+            batch_payload = batch_payload.call()
 
         # When batching, we don't make a request. Instead, we will get the request
         # information and store it in the `_requests_info` list. So we have to cast the
@@ -136,8 +124,8 @@ class RequestBatcher(Generic[TFunc]):
             Union[
                 "Method[Callable[..., Any]]",
                 Callable[..., Any],
-                ContractFunction,
-                AsyncContractFunction,
+                "ContractFunction",
+                "AsyncContractFunction",
             ],
             List[Any],
         ],
@@ -156,9 +144,6 @@ class RequestBatcher(Generic[TFunc]):
     def clear(self) -> None:
         self._requests_info = []
         self._async_requests_info = []
-        if self._provider.has_persistent_connection:
-            provider = cast("PersistentConnectionProvider", self._provider)
-            provider._batch_request_counter = next(copy(provider.request_counter))
 
     def cancel(self) -> None:
         self._end_batching()
@@ -181,9 +166,14 @@ class RequestBatcher(Generic[TFunc]):
 
     async def async_execute(self) -> List["RPCResponse"]:
         self._validate_is_batching()
-        responses = await self.web3.manager._async_make_batch_request(
-            self._async_requests_info
-        )
+        if self._provider.has_persistent_connection:
+            responses = await self.web3.manager._async_make_socket_batch_request(
+                self._async_requests_info
+            )
+        else:
+            responses = await self.web3.manager._async_make_batch_request(
+                self._async_requests_info
+            )
         self._end_batching()
         return responses
 
@@ -220,39 +210,3 @@ def sort_batch_response_by_response_ids(
             stacklevel=2,
         )
         return responses
-
-
-class SupportsBatching(Protocol):
-    _is_batching: bool
-
-
-R = TypeVar("R")
-T = TypeVar("T", bound=SupportsBatching)
-
-
-def async_batching_context(
-    method: Callable[[T, List[Tuple[RPCEndpoint, Any]]], Coroutine[Any, Any, R]]
-) -> Callable[[T, List[Tuple[RPCEndpoint, Any]]], Coroutine[Any, Any, R]]:
-    @wraps(method)
-    async def wrapper(self: T, requests: List[Tuple[RPCEndpoint, Any]]) -> R:
-        self._is_batching = True
-        try:
-            return await method(self, requests)
-        finally:
-            self._is_batching = False
-
-    return wrapper
-
-
-def batching_context(
-    method: Callable[[T, List[Tuple[RPCEndpoint, Any]]], R]
-) -> Callable[[T, List[Tuple[RPCEndpoint, Any]]], R]:
-    @wraps(method)
-    def wrapper(self: T, requests: List[Tuple[RPCEndpoint, Any]]) -> R:
-        self._is_batching = True
-        try:
-            return method(self, requests)
-        finally:
-            self._is_batching = False
-
-    return wrapper

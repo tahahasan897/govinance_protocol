@@ -1,0 +1,28 @@
+specVersion: 0.0.5
+description: "Subgraph for TCRIPT transfer volume & holders"
+repository: "https://github.com/your/repo"
+
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum/contract
+    name: Transcript
+    network: sepolia
+    source:
+      address: "0xE9D84EeF391E621bD4CccA68476DFf8a5AafD96d"  # your real address
+      abi: Transcript
+      startBlock: 12345678                                # your deploy block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - DailyVolume
+      abis:
+        - name: Transcript
+          file: ./abis/Transcript.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/mapping.ts

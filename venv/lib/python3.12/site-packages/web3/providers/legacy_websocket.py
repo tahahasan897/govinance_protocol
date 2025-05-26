@@ -27,7 +27,6 @@ from websockets.legacy.client import (
 )
 
 from web3._utils.batching import (
-    batching_context,
     sort_batch_response_by_response_ids,
 )
 from web3._utils.caching import (
@@ -136,7 +135,7 @@ class LegacyWebSocketProvider(JSONBaseProvider):
     @handle_request_caching
     def make_request(self, method: RPCEndpoint, params: Any) -> RPCResponse:
         self.logger.debug(
-            f"Making request WebSocket. URI: {self.endpoint_uri}, " f"Method: {method}"
+            "Making request WebSocket. URI: %s, Method: %s", self.endpoint_uri, method
         )
         request_data = self.encode_rpc_request(method, params)
         future = asyncio.run_coroutine_threadsafe(
@@ -144,13 +143,13 @@ class LegacyWebSocketProvider(JSONBaseProvider):
         )
         return future.result()
 
-    @batching_context
     def make_batch_request(
         self, requests: List[Tuple[RPCEndpoint, Any]]
     ) -> List[RPCResponse]:
         self.logger.debug(
-            f"Making batch request WebSocket. URI: {self.endpoint_uri}, "
-            f"Methods: {requests}"
+            "Making batch request WebSocket. URI: %s, Methods: %s",
+            self.endpoint_uri,
+            requests,
         )
         request_data = self.encode_batch_rpc_request(requests)
         future = asyncio.run_coroutine_threadsafe(
