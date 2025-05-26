@@ -1,0 +1,16 @@
+type Holder @entity {
+  id: ID!
+  balance: BigInt!
+}
+
+type Token @entity {
+  id: ID!
+  holderCount: Int!
+}
+
+type DailyStat @entity {
+  id: ID!
+  date: Int!
+  volume: BigInt!
+  holderCount: Int!
+}

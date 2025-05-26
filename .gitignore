@@ -10,7 +10,7 @@ venv/
 
 # Environment variables
 .env
-necessities.env
+# do not ignore necessities.env so the contract address can be shared
 
 # IDE/editor settings
 .vscode/
