@@ -39,21 +39,25 @@ def fetch_and_store():
     start_block = max(latest - 1000, 0)
 
     # Fetch events using correct create_filter
+    # web3.py 7.x expects snake_case filter parameters
     event_filter = contract.events.Transfer.create_filter(
-        fromBlock=start_block,
-        toBlock=latest
+        from_block=start_block,
+        to_block=latest
     )
     events = event_filter.get_all_entries()
 
     # Aggregate daily metrics
     daily_volume = defaultdict(int)
-    holders = set()
+    holders_by_day = defaultdict(set)
     for e in events:
         block = w3.eth.get_block(e.blockNumber)
         timestamp = block.timestamp
         day = datetime.date.fromtimestamp(timestamp).isoformat()
         daily_volume[day] += int(e.args.value)
-        holders.add(e.args.to)
+        holders_by_day[day].add(e.args.to)
+        # Include the sender as well so holder_count reflects all active addresses
+        if hasattr(e.args, "_from"):
+            holders_by_day[day].add(e.args._from)
 
     # Store metrics
     with engine.begin() as conn:
@@ -67,9 +71,10 @@ def fetch_and_store():
             """), {
                 "day": day,
                 "volume": str(volume),
-                "holder_count": len(holders)
+                "holder_count": len(holders_by_day[day])
             })
 
 if __name__ == "__main__":
     fetch_and_store()
+    
     print("✅ Fetched and saved daily metrics.")
