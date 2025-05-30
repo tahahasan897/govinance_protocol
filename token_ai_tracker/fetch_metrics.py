@@ -26,17 +26,14 @@ def save_state(state: dict):
 # ────────────────────────────────────────────────────────
 #  LOAD ENV
 # ────────────────────────────────────────────────────────
-# assumes necessities.env is one level up from token_ai_tracker/
+# necessities.env is one level up from token_ai_tracker/
 env_path = SCRIPT_DIR.parent / "necessities.env"
 load_dotenv(dotenv_path=env_path)
 
 RPC_URL = os.getenv("RPC_URL")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 ABI_FILE = os.getenv("ABI_FILE", "abis/Transcript.json")
-DB_URL = os.getenv(
-    "DB_URL",
-    "sqlite:///" + str(SCRIPT_DIR / "token_metrics.db")
-)
+DB_URL = os.getenv("DB_URL", "sqlite:///token_metrics.db")
 
 # ────────────────────────────────────────────────────────
 #  SET UP WEB3 & CONTRACT
@@ -52,19 +49,11 @@ contract = w3.eth.contract(
 def fetch_and_store():
     # 1) DB & Table setup
     engine = create_engine(DB_URL)
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS daily_metrics (
-                day TEXT PRIMARY KEY,
-                volume TEXT,
-                holder_count INTEGER
-            )
-        """))
 
     # 2) Determine block range from state
     state = load_state()
     start_block = state["last_block"] + 1
-    latest      = w3.eth.block_number
+    latest = w3.eth.block_number
     if start_block > latest:
         print("✅ No new blocks to process.")
         return
@@ -81,9 +70,9 @@ def fetch_and_store():
     holders_by_day = defaultdict(set)
 
     for e in events:
-        blk       = w3.eth.get_block(e.blockNumber)
-        ts        = blk.timestamp
-        day       = datetime.date.fromtimestamp(ts).isoformat()
+        blk = w3.eth.get_block(e.blockNumber)
+        ts = blk.timestamp
+        day = datetime.date.fromtimestamp(ts).isoformat()
 
         daily_volume[day] += int(e.args.value)
         holders_by_day[day].add(e.args.to)
