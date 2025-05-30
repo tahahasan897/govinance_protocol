@@ -65,7 +65,13 @@ def fetch_and_store():
         return
 
     # 3) Fetch only new Transfer events
-    event_filter = contract.events.Transfer.create_filter(
+    if hasattr(contract.events.Transfer, "create_filter"):
+        event_filter = contract.events.Transfer.create_filter(
+        fromBlock=start_block,
+        toBlock=latest
+    )
+    else:  # fallback for very old web3 versions
+        event_filter = contract.events.Transfer.createFilter(
         fromBlock=start_block,
         toBlock=latest
     )
