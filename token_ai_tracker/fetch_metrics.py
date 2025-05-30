@@ -16,8 +16,14 @@ STATE_FILE = SCRIPT_DIR / "state.json"
 
 def load_state():
     if STATE_FILE.exists():
-        return json.loads(STATE_FILE.read_text())
-    # first run → no state file
+        try:
+            data = STATE_FILE.read_text().strip()
+            if data:
+                return json.loads(data)
+        except json.JSONDecodeError:
+            # corrupted or empty state file
+            pass
+    # first run or unreadable state file
     return {"last_block": 0}
 
 def save_state(state: dict):
@@ -59,7 +65,7 @@ def fetch_and_store():
         return
 
     # 3) Fetch only new Transfer events
-    event_filter = contract.events.Transfer.createFilter(
+    event_filter = contract.events.Transfer.create_filter(
         fromBlock=start_block,
         toBlock=latest
     )
