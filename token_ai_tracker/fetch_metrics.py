@@ -66,15 +66,22 @@ def fetch_and_store():
 
     # 3) Fetch only new Transfer events
     if hasattr(contract.events.Transfer, "create_filter"):
-        event_filter = contract.events.Transfer.create_filter(
-        fromBlock=start_block,
-        toBlock=latest
-    )
+        try:
+            event_filter = contract.events.Transfer.create_filter(
+                fromBlock=start_block,
+                toBlock=latest,
+            )
+        except TypeError:
+            # web3 versions >=6 renamed params to snake_case
+            event_filter = contract.events.Transfer.create_filter(
+                from_block=start_block,
+                to_block=latest,
+            )
     else:  # fallback for very old web3 versions
         event_filter = contract.events.Transfer.createFilter(
-        fromBlock=start_block,
-        toBlock=latest
-    )
+            fromBlock=start_block,
+            toBlock=latest,
+        )
     events = event_filter.get_all_entries()
 
     # 4) Aggregate by day
