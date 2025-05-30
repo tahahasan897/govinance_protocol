@@ -3,28 +3,55 @@ import json
 import datetime
 from collections import defaultdict
 from pathlib import Path
+
 from web3 import Web3
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-# Load env from project root
-env_path = Path(__file__).resolve().parent.parent / "necessities.env"
+# ────────────────────────────────────────────────────────
+#  CONFIGURATION & STATE FILE
+# ────────────────────────────────────────────────────────
+SCRIPT_DIR = Path(__file__).resolve().parent
+STATE_FILE = SCRIPT_DIR / "state.json"
+
+def load_state():
+    if STATE_FILE.exists():
+        return json.loads(STATE_FILE.read_text())
+    # first run → no state file
+    return {"last_block": 0}
+
+def save_state(state: dict):
+    STATE_FILE.write_text(json.dumps(state))
+
+# ────────────────────────────────────────────────────────
+#  LOAD ENV
+# ────────────────────────────────────────────────────────
+# assumes necessities.env is one level up from token_ai_tracker/
+env_path = SCRIPT_DIR.parent / "necessities.env"
 load_dotenv(dotenv_path=env_path)
 
-# Environment variables
-every_rpc = os.getenv("RPC_URL")
-contract_address = os.getenv("CONTRACT_ADDRESS")
-abi_file = os.getenv("ABI_FILE", "abis/Transcript.json")
-db_url = os.getenv("DB_URL", "sqlite:///" + str(Path(__file__).resolve().parent / "token_metrics.db"))
+RPC_URL = os.getenv("RPC_URL")
+CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
+ABI_FILE = os.getenv("ABI_FILE", "abis/Transcript.json")
+DB_URL = os.getenv(
+    "DB_URL",
+    "sqlite:///" + str(SCRIPT_DIR / "token_metrics.db")
+)
 
-# Setup Web3 and contract
-w3 = Web3(Web3.HTTPProvider(every_rpc))
-abi = json.load(open(abi_file))
-contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
+# ────────────────────────────────────────────────────────
+#  SET UP WEB3 & CONTRACT
+# ────────────────────────────────────────────────────────
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+abi = json.load(open(ABI_FILE))
+contract = w3.eth.contract(
+    address=Web3.to_checksum_address(CONTRACT_ADDRESS),
+    abi=abi
+)
 
+# ────────────────────────────────────────────────────────
 def fetch_and_store():
-    # Initialize database and table
-    engine = create_engine(db_url)
+    # 1) DB & Table setup
+    engine = create_engine(DB_URL)
     with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS daily_metrics (
@@ -34,34 +61,38 @@ def fetch_and_store():
             )
         """))
 
-    # Determine block range
-    latest = w3.eth.block_number
-    start_block = max(latest - 1000, 0)
+    # 2) Determine block range from state
+    state = load_state()
+    start_block = state["last_block"] + 1
+    latest      = w3.eth.block_number
+    if start_block > latest:
+        print("✅ No new blocks to process.")
+        return
 
-    # Fetch events using correct create_filter
-    # web3.py 7.x expects snake_case filter parameters
-    event_filter = contract.events.Transfer.create_filter(
-        from_block=start_block,
-        to_block=latest
+    # 3) Fetch only new Transfer events
+    event_filter = contract.events.Transfer.createFilter(
+        fromBlock=start_block,
+        toBlock=latest
     )
     events = event_filter.get_all_entries()
 
-    # Aggregate daily metrics
-    daily_volume = defaultdict(int)
+    # 4) Aggregate by day
+    daily_volume   = defaultdict(int)
     holders_by_day = defaultdict(set)
+
     for e in events:
-        block = w3.eth.get_block(e.blockNumber)
-        timestamp = block.timestamp
-        day = datetime.date.fromtimestamp(timestamp).isoformat()
+        blk       = w3.eth.get_block(e.blockNumber)
+        ts        = blk.timestamp
+        day       = datetime.date.fromtimestamp(ts).isoformat()
+
         daily_volume[day] += int(e.args.value)
         holders_by_day[day].add(e.args.to)
-        # Include the sender as well so holder_count reflects all active addresses
         if hasattr(e.args, "_from"):
             holders_by_day[day].add(e.args._from)
 
-    # Store metrics
+    # 5) Upsert into SQLite
     with engine.begin() as conn:
-        for day, volume in daily_volume.items():
+        for day, vol in daily_volume.items():
             conn.execute(text("""
                 INSERT INTO daily_metrics (day, volume, holder_count)
                 VALUES (:day, :volume, :holder_count)
@@ -70,11 +101,15 @@ def fetch_and_store():
                   holder_count = EXCLUDED.holder_count
             """), {
                 "day": day,
-                "volume": str(volume),
+                "volume": str(vol),
                 "holder_count": len(holders_by_day[day])
             })
 
+    # 6) Update and save state
+    state["last_block"] = latest
+    save_state(state)
+    print(f"✅ Processed blocks {start_block} → {latest}, saved state.json")
+
+# ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     fetch_and_store()
-    
-    print("✅ Fetched and saved daily metrics.")

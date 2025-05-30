@@ -20,8 +20,8 @@ WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 # Connect
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-# Load ABI relative to this file so path works regardless of CWD
-ABI_PATH = os.path.join(os.path.dirname(__file__), "Transcript.json")
+# Load ABI from necessities.env that leads to token_ai_tracker/abis/Transcript.json
+ABI_PATH = os.getenv("ABI_FILE")
 with open(ABI_PATH) as f:
     abi = json.load(f)
 

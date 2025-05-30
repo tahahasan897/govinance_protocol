@@ -17,7 +17,7 @@ app = Flask(__name__)
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 5}))
 
 # Load the ABI relative to this file so running from other directories works
-ABI_PATH = os.path.join(os.path.dirname(__file__), "abi.json")
+ABI_PATH = os.getenv("ABI_FILE")
 with open(ABI_PATH) as f:
     abi = json.load(f)
 
