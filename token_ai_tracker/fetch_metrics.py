@@ -1,123 +1,173 @@
 import os
+import sys
 import json
+import time
 import datetime
 from collections import defaultdict
 from pathlib import Path
 
 from web3 import Web3
+from web3.exceptions import BlockNotFound, TransactionNotFound
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-# ────────────────────────────────────────────────────────
-#  CONFIGURATION & STATE FILE
-# ────────────────────────────────────────────────────────
+"""
+Token‑AI Tracker  ·  Daily on‑chain metrics aggregator
+-----------------------------------------------------
+* Dynamically sizes each `eth_getLogs` request so you **never** blow the
+  provider’s max‑logs limit, yet keep the request count tiny.
+* Retries with exponential back‑off on rate‑limit (HTTP 429) or oversize
+  errors.
+* Stores last‑processed block in `state.json`, so each run fetches only
+  new data.
+"""
+
+# ╭─────────────────────────────────────────────────────╮
+# │ CONFIGURATION & STATE FILE                         │
+# ╰─────────────────────────────────────────────────────╯
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 STATE_FILE = SCRIPT_DIR / "state.json"
+
+# These spans are tuned for Alchemy free tier (10 k log cap / 60 RPM)
+START_SPAN = 10_000   # optimistic first try (blocks per call)
+MIN_SPAN   = 50       # don’t go below this even on dense days
+BACKOFF    = 2.0      # seconds, doubled each retry
+MAX_RETRY  = 5        # max back‑off retries before bailing
+
 
 def load_state():
     if STATE_FILE.exists():
         try:
-            data = STATE_FILE.read_text().strip()
-            if data:
-                return json.loads(data)
+            return json.loads(STATE_FILE.read_text())
         except json.JSONDecodeError:
-            # corrupted or empty state file
-            pass
-    # first run or unreadable state file
+            print("⚠️  state.json corrupted – resetting bookmark.")
     return {"last_block": 0}
+
 
 def save_state(state: dict):
     STATE_FILE.write_text(json.dumps(state))
 
-# ────────────────────────────────────────────────────────
-#  LOAD ENV
-# ────────────────────────────────────────────────────────
-# necessities.env is one level up from token_ai_tracker/
-env_path = SCRIPT_DIR.parent / "necessities.env"
-load_dotenv(dotenv_path=env_path)
+# ╭─────────────────────────────────────────────────────╮
+# │ ENV + WEB3 SETUP                                   │
+# ╰─────────────────────────────────────────────────────╯
 
-RPC_URL = os.getenv("RPC_URL")
+load_dotenv(SCRIPT_DIR.parent / "necessities.env")
+INFURA_API_KEY          = os.getenv("INFURA_API_KEY")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
-ABI_FILE = os.getenv("ABI_FILE", "abis/Transcript.json")
-DB_URL = os.getenv("DB_URL", "sqlite:///token_metrics.db")
+ABI_FILE         = os.getenv("ABI_FILE", "abis/Transcript.json")
+DB_URL           = os.getenv("DB_URL", "sqlite:///token_metrics.db")
 
-# ────────────────────────────────────────────────────────
-#  SET UP WEB3 & CONTRACT
-# ────────────────────────────────────────────────────────
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
-abi = json.load(open(ABI_FILE))
-contract = w3.eth.contract(
-    address=Web3.to_checksum_address(CONTRACT_ADDRESS),
-    abi=abi
-)
+for var in ("INFURA_API_KEY", "CONTRACT_ADDRESS"):
+    if not globals()[var]:
+        sys.exit(f"❌ {var} missing in .env; aborting.")
 
-# ────────────────────────────────────────────────────────
+w3 = Web3(Web3.HTTPProvider(INFURA_API_KEY))
+if not w3.is_connected():
+    sys.exit("❌ RPC endpoint unreachable.")
+
+abi      = json.load(open(ABI_FILE))
+contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=abi)
+
+# ╭─────────────────────────────────────────────────────╮
+# │ HELPERS                                            │
+# ╰─────────────────────────────────────────────────────╯
+
+def adaptive_get_logs(from_block: int, to_block: int):
+    """Yield logs in the range, shrinking span on oversize errors."""
+    span = to_block - from_block + 1
+    cur  = from_block
+    # Compute Transfer event topic hash robustly
+    transfer_abi = contract.events.Transfer().abi
+    event_signature = f"{transfer_abi['name']}({','.join([input['type'] for input in transfer_abi['inputs']])})"
+    transfer_topic = w3.keccak(text=event_signature).hex()
+    while cur <= to_block:
+        try_span = min(span, to_block - cur + 1)
+        retries  = 0
+        while True:
+            try:
+                logs = w3.eth.get_logs({
+                    "fromBlock": cur,
+                    "toBlock":   cur + try_span - 1,
+                    "address":   Web3.to_checksum_address(str(contract.address)),
+                    "topics":    [transfer_topic]
+                })
+                yield from logs
+                cur += try_span
+                break  # success, move to next slice
+            except ValueError as e:
+                msg = str(e)
+                if "response size exceeded" in msg and try_span > MIN_SPAN:
+                    try_span //= 2  # slice was too big; halve span and retry immediately
+                    continue
+                if "429" in msg or "rate limit" in msg:
+                    if retries >= MAX_RETRY:
+                        raise
+                    sleep_time = BACKOFF * (2 ** retries)
+                    time.sleep(sleep_time)
+                    retries += 1
+                    continue
+                raise  # unexpected error – bubble up
+
+# ╭─────────────────────────────────────────────────────╮
+# │ MAIN INGEST FUNCTION                               │
+# ╰─────────────────────────────────────────────────────╯
+
 def fetch_and_store():
-    # 1) DB & Table setup
     engine = create_engine(DB_URL)
 
-    # 2) Determine block range from state
-    state = load_state()
-    start_block = state["last_block"] + 1
-    latest = w3.eth.block_number
-    if start_block > latest:
-        print("✅ No new blocks to process.")
+    state        = load_state()
+    start_block  = state["last_block"] + 1
+    latest_block = w3.eth.block_number
+
+    if start_block > latest_block:
+        print("✅ Up‑to‑date. No new blocks.")
         return
 
-    # 3) Fetch only new Transfer events
-    if hasattr(contract.events.Transfer, "create_filter"):
-        try:
-            event_filter = contract.events.Transfer.create_filter(
-                fromBlock=start_block,
-                toBlock=latest,
-            )
-        except TypeError:
-            # web3 versions >=6 renamed params to snake_case
-            event_filter = contract.events.Transfer.create_filter(
-                from_block=start_block,
-                to_block=latest,
-            )
-    else:  # fallback for very old web3 versions
-        event_filter = contract.events.Transfer.createFilter(
-        fromBlock=start_block,
-        toBlock=latest
-    )
-    events = event_filter.get_all_entries()
+    print(f"🔄 Processing blocks {start_block:,} → {latest_block:,} …")
 
-    # 4) Aggregate by day
-    daily_volume   = defaultdict(int)
-    holders_by_day = defaultdict(set)
+    daily_volume      = defaultdict(int)
+    holders_by_day    = defaultdict(set)
+    senders_by_day    = defaultdict(set)
+    wallets_by_day    = defaultdict(set)
 
-    for e in events:
-        blk = w3.eth.get_block(e.blockNumber)
-        ts = blk.timestamp
-        day = datetime.date.fromtimestamp(ts).isoformat()
+    # Stream logs adaptively
+    for log in adaptive_get_logs(start_block, latest_block):
+        blk_ts = w3.eth.get_block(log.blockNumber).timestamp
+        day    = datetime.date.fromtimestamp(blk_ts, datetime.timezone.utc).isoformat()
 
-        daily_volume[day] += int(e.args.value)
-        holders_by_day[day].add(e.args.to)
-        if hasattr(e.args, "_from"):
-            holders_by_day[day].add(e.args._from)
+        frm = (getattr(log, "args", log)["from"] if isinstance(log, dict)
+               else getattr(log.args, "_from", log["args"].get("from"))).lower()
+        to  = (getattr(log, "args", log)["to"]   if isinstance(log, dict)
+               else getattr(log.args, "to",   log["args"].get("to"))).lower()
 
-    # 5) Upsert into SQLite
+        daily_volume[day]   += int(log["data"], 16) if isinstance(log, dict) else int(log.args.value)
+        holders_by_day[day].update([frm, to])
+        senders_by_day[day].add(frm)
+        wallets_by_day[day].update([frm, to])
+
     with engine.begin() as conn:
-        for day, vol in daily_volume.items():
-            conn.execute(text("""
-                INSERT INTO daily_metrics (day, volume, holder_count)
-                VALUES (:day, :volume, :holder_count)
-                ON CONFLICT(day) DO UPDATE SET
-                  volume = EXCLUDED.volume,
-                  holder_count = EXCLUDED.holder_count
-            """), {
-                "day": day,
-                "volume": str(vol),
-                "holder_count": len(holders_by_day[day])
+        UPSERT = text("""
+            INSERT INTO daily_metrics (day, volume, holder_count, unique_senders, active_wallets)
+            VALUES (:day, :volume, :holder_count, :unique_senders, :active_wallets)
+            ON CONFLICT(day) DO UPDATE SET
+                volume          = EXCLUDED.volume,
+                holder_count    = EXCLUDED.holder_count,
+                unique_senders  = EXCLUDED.unique_senders,
+                active_wallets  = EXCLUDED.active_wallets;""")
+        for day in sorted(daily_volume):
+            conn.execute(UPSERT, {
+                "day":            day,
+                "volume":         daily_volume[day],
+                "holder_count":   len(holders_by_day[day]),
+                "unique_senders": len(senders_by_day[day]),
+                "active_wallets": len(wallets_by_day[day]),
             })
 
-    # 6) Update and save state
-    state["last_block"] = latest
+    state["last_block"] = latest_block
     save_state(state)
-    print(f"✅ Processed blocks {start_block} → {latest}, saved state.json")
+    print(f"✅ Ingest complete – bookmark saved at block {latest_block:,}.")
 
-# ────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     fetch_and_store()
