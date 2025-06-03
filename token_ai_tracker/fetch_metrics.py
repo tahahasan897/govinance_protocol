@@ -8,6 +8,7 @@ from pathlib import Path
 
 from web3 import Web3
 from web3.exceptions import BlockNotFound, TransactionNotFound
+from eth_utils import event_abi_to_log_topic
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
@@ -69,6 +70,10 @@ if not w3.is_connected():
 abi      = json.load(open(ABI_FILE))
 contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=abi)
 
+# Precompute the transfer event using the ABI for accuracy
+transfer_abi = contract.events.Transfer().abi
+TRANSFER_TOPIC = Web3.to_hex(event_abi_to_log_topic(transfer_abi))
+
 # ╭─────────────────────────────────────────────────────╮
 # │ HELPERS                                            │
 # ╰─────────────────────────────────────────────────────╯
@@ -77,20 +82,16 @@ def adaptive_get_logs(from_block: int, to_block: int):
     """Yield logs in the range, shrinking span on oversize errors."""
     span = to_block - from_block + 1
     cur  = from_block
-    # Compute Transfer event topic hash robustly
-    transfer_abi = contract.events.Transfer().abi
-    event_signature = f"{transfer_abi['name']}({','.join([input['type'] for input in transfer_abi['inputs']])})"
-    transfer_topic = w3.keccak(text=event_signature).hex()
     while cur <= to_block:
         try_span = min(span, to_block - cur + 1)
         retries  = 0
         while True:
             try:
                 logs = w3.eth.get_logs({
-                    "fromBlock": cur,
-                    "toBlock":   cur + try_span - 1,
+                    "fromBlock": Web3.to_hex(cur),
+                    "toBlock":   Web3.to_hex(cur + try_span - 1),
                     "address":   Web3.to_checksum_address(str(contract.address)),
-                    "topics":    [transfer_topic]
+                    "topics":    [TRANSFER_TOPIC]
                 })
                 yield from logs
                 cur += try_span
@@ -121,7 +122,7 @@ def fetch_and_store():
     latest_block = w3.eth.block_number
 
     if start_block > latest_block:
-        print("✅ Up‑to‑date. No new blocks.")
+        print("✅ Up-to-date. No new blocks.")
         return
 
     print(f"🔄 Processing blocks {start_block:,} → {latest_block:,} …")
@@ -134,14 +135,17 @@ def fetch_and_store():
     # Stream logs adaptively
     for log in adaptive_get_logs(start_block, latest_block):
         blk_ts = w3.eth.get_block(log.blockNumber).timestamp
-        day    = datetime.date.fromtimestamp(blk_ts, datetime.timezone.utc).isoformat()
+        day    = datetime.datetime.fromtimestamp(
+            blk_ts, tz=datetime.timezone.utc
+        ).date().isoformat()
 
-        frm = (getattr(log, "args", log)["from"] if isinstance(log, dict)
-               else getattr(log.args, "_from", log["args"].get("from"))).lower()
-        to  = (getattr(log, "args", log)["to"]   if isinstance(log, dict)
-               else getattr(log.args, "to",   log["args"].get("to"))).lower()
+        # ── Decode the raw log into a Transfer event ──────────────────────────────────
+        event = contract.events.Transfer().processLog(log)
+        frm   = event.args["from"].lower()
+        to    = event.args["to"].lower()
+        value = event.args["value"]
 
-        daily_volume[day]   += int(log["data"], 16) if isinstance(log, dict) else int(log.args.value)
+        daily_volume[day]   += value
         holders_by_day[day].update([frm, to])
         senders_by_day[day].add(frm)
         wallets_by_day[day].update([frm, to])
@@ -167,7 +171,3 @@ def fetch_and_store():
     state["last_block"] = latest_block
     save_state(state)
     print(f"✅ Ingest complete – bookmark saved at block {latest_block:,}.")
-
-
-if __name__ == "__main__":
-    fetch_and_store()
