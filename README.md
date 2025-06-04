@@ -84,7 +84,7 @@ Transcript introduces:
 
 ### 📉 Burn-to-Redeem System
 
-- To receive 1x V1 wallet, user burns some amount (e.g., 1000 TCRIPT = 1 TCRIPTV1. 0.15 to pay in order to burn)  
+- To receive 1x V1 wallet, user burns some amount to pay in order to burn  
 - Supply reduced = deflationary effect
 
 ### 📈 AI-Adjusted Thresholds
