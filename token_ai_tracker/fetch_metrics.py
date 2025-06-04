@@ -11,8 +11,11 @@ from sqlalchemy import create_engine, text
 from web3 import Web3
 
 # Load configuration from .env file
-SCRIPT_DIR = Path(__file__).resolve().parent
-load_dotenv(SCRIPT_DIR / '.env')
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(SCRIPT_DIR / 'necessities.env')
+
+# Constants
+TOKEN_DEPLOY_BLOCK = 8470000
 
 INFURA_API_KEY = os.getenv('INFURA_API_KEY')
 CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS')
@@ -20,7 +23,7 @@ if not INFURA_API_KEY or not CONTRACT_ADDRESS:
     raise SystemExit('INFURA_API_KEY and CONTRACT_ADDRESS must be set in .env')
 
 STATE_PATH = SCRIPT_DIR / 'state.json'
-ABI_PATH = SCRIPT_DIR / 'abis' / 'YourTokenABI.json'
+ABI_PATH = SCRIPT_DIR / 'token_ai_tracker' / 'abis' / 'Transcript.json'
 DB_URL = 'sqlite:///token_metrics.db'
 
 # Load last processed block
@@ -46,7 +49,7 @@ contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), a
 TRANSFER_TOPIC = event_abi_to_log_topic(contract.events.Transfer().abi)
 
 last_block = load_last_block(STATE_PATH)
-start_block = last_block + 1
+start_block = max(last_block + 1, TOKEN_DEPLOY_BLOCK)
 latest_block = w3.eth.block_number
 
 if start_block > latest_block:
@@ -96,7 +99,7 @@ while block <= latest_block:
             raise
 
     for raw in logs:
-        event = contract.events.Transfer().processLog(raw)
+        event = contract.events.Transfer().process_log(raw)
         from_addr = event['args']['from'].lower()
         to_addr = event['args']['to'].lower()
         value = int(event['args']['value'])
@@ -117,7 +120,7 @@ with engine.begin() as conn:
         """
         CREATE TABLE IF NOT EXISTS daily_metrics (
             day            TEXT    PRIMARY KEY,
-            volume         INTEGER NOT NULL,
+            volume         TEXT    NOT NULL,
             holder_count   INTEGER NOT NULL,
             unique_senders INTEGER NOT NULL,
             active_wallets INTEGER NOT NULL
@@ -139,7 +142,7 @@ with engine.begin() as conn:
             ),
             {
                 'day': day,
-                'volume': daily_volume[day],
+                'volume': str(daily_volume[day]),
                 'holder_count': len(holders_by_day[day]),
                 'unique_senders': len(senders_by_day[day]),
                 'active_wallets': len(wallets_by_day[day]),
