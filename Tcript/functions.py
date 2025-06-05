@@ -66,15 +66,21 @@ def demand_index(db_path, total_supply):
     w_v, w_h, w_c = 0.5, 0.3, 0.2
     demand = w_v * v_t + w_h * h_t + w_c * c_t
     conn.close()
-    return demand, v_t, h_t, c_t, h_sum, h_last
+
+    return demand
 
 def adaptive_threshold(demand, msct=0.5, ga=0.2):
-    """Adaptive threshold calculation."""
-    return msct * (1 + ga * (demand - msct))
+    """Adaptive threshold calculation. The value that gets returned is the new msct."""
+    new_value = msct * (1 + ga * (demand - msct))
+    msct = new_value
+
+    return msct 
 
 def heat_gap(demand, threshold):
     """Heat gap calculation."""
-    return threshold - demand 
+    g_t = threshold - demand 
+
+    return g_t
 
 def percent_rule(g_t, msct, k=0.6):
     """Percent rule calculation."""
