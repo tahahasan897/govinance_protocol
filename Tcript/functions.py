@@ -16,11 +16,26 @@
 
 import sqlite3
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
 
-# DB_Path
-DB_PATH = 'token_metrics.db' 
-# Total supply
+# Load environment variables from the repository root so that this module works
+# regardless of where it's executed from.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
+load_dotenv(ENV_PATH)
+
+# Database path. Allow overriding via environment variable for flexibility.
+DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
+
+# Total supply of the token. This can be provided through an environment
+# variable so the functions can operate with the correct value without editing
+# the code.
 TOTAL_SUPPLY = 1000000
+
+# Dynamic msct
+msct = 0.5
+
 
 def demand_index(db_path, total_supply):
     """
@@ -29,17 +44,13 @@ def demand_index(db_path, total_supply):
     """
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    today = datetime.utcnow().date()
-    start_this_week = today - timedelta(days=today.weekday())
-    start_last_week = start_this_week - timedelta(days=7)
-    end_last_week = start_this_week - timedelta(days=1)
 
     # Fetch present week sums
     cur.execute("""
         SELECT SUM(volume), SUM(holder_count), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
-        WHERE day >= ?
-    """, (str(start_this_week),))
+        WHERE day BETWEEN date('now', '-6 days') AND date('now');
+    """)
     v_sum, h_sum, u_sum, a_sum = cur.fetchone()
     v_sum = int(v_sum or 0)
     h_sum = int(h_sum or 0)
@@ -50,17 +61,17 @@ def demand_index(db_path, total_supply):
     cur.execute("""
         SELECT SUM(holder_count)
         FROM daily_metrics
-        WHERE day >= ? AND day <= ?
-    """, (str(start_last_week), str(end_last_week)))
+        WHERE day BETWEEN date ('now', '-13 days') AND date ('now', '-7 days'); 
+    """)
     h_last = cur.fetchone()[0]
     h_last = int(h_last or 1)  # avoid div by zero
 
     # v_t: volume/total_supply*100
-    v_t = (v_sum / total_supply) * 100 if total_supply else 0
+    v_t = (v_sum / total_supply) * 100
     # h_t: (present holders - last week holders) / last week holders
-    h_t = (h_sum - h_last) / h_last if h_last else 0
+    h_t = (h_sum - h_last) / h_last
     # c_t: unique_senders / active_wallets
-    c_t = (u_sum / a_sum) if a_sum else 0
+    c_t = (u_sum / a_sum)
 
     # Demand index D
     w_v, w_h, w_c = 0.5, 0.3, 0.2
@@ -69,7 +80,7 @@ def demand_index(db_path, total_supply):
 
     return demand
 
-def adaptive_threshold(demand, msct=0.5, ga=0.2):
+def adaptive_threshold(demand, msct, ga=0.2):
     """Adaptive threshold calculation. The value that gets returned is the new msct."""
     new_value = msct * (1 + ga * (demand - msct))
     msct = new_value
@@ -78,13 +89,27 @@ def adaptive_threshold(demand, msct=0.5, ga=0.2):
 
 def heat_gap(demand, threshold):
     """Heat gap calculation."""
-    g_t = threshold - demand 
+    g_t = demand - threshold
 
     return g_t
 
 def percent_rule(g_t, msct, k=0.6):
     """Percent rule calculation."""
     return k * g_t / msct if msct else 0
+
+if __name__ == "__main__":
+    the_demand = demand_index(DB_PATH, TOTAL_SUPPLY)
+    msct = adaptive_threshold(the_demand, msct)
+    threshold = msct
+    g_t = heat_gap(the_demand, threshold)
+    percent = percent_rule(g_t, threshold)
+
+    print(f"Demand Index: {the_demand}")
+    print(f"Threshold: {threshold}")
+    print(f"Heat Gap (g_t): {g_t}")
+    print(f"Percent Rule: {percent}")
+
+
 
 # Example usage (uncomment and set total_supply):
 # demand, v_t, h_t, c_t, h_sum, h_last = demand_index('token_metrics.db', total_supply)
