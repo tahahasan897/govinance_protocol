@@ -102,7 +102,7 @@ while block <= latest_block:
         event = contract.events.Transfer().process_log(raw)
         from_addr = event['args']['from'].lower()
         to_addr = event['args']['to'].lower()
-        value = int(event['args']['value'])
+        value = int(event['args']['value']) // 10**18
         blk_ts = w3.eth.get_block(raw['blockNumber']).timestamp
         day = datetime.fromtimestamp(blk_ts, timezone.utc).strftime('%Y-%m-%d')
 
@@ -116,17 +116,6 @@ while block <= latest_block:
 
 engine = create_engine(DB_URL)
 with engine.begin() as conn:
-    conn.execute(text(
-        """
-        CREATE TABLE IF NOT EXISTS daily_metrics (
-            day            TEXT    PRIMARY KEY,
-            volume         TEXT    NOT NULL,
-            holder_count   INTEGER NOT NULL,
-            unique_senders INTEGER NOT NULL,
-            active_wallets INTEGER NOT NULL
-        );
-        """
-    ))
     for day in sorted(daily_volume.keys()):
         conn.execute(
             text(
