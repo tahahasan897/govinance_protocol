@@ -4,6 +4,7 @@ from web3 import Web3
 import json
 import os
 from dotenv import load_dotenv
+from functions import demand_index, adaptive_threshold, heat_gap, percent_rule
 
 # Load environment variables from repository root so the script works regardless
 # of the current working directory.
@@ -12,6 +13,7 @@ ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
 load_dotenv(dotenv_path=ENV_PATH)
 
 # Config
+DB_PATH = os.getenv("DB_PATH")
 RPC_URL = os.getenv("RPC_URL")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
@@ -32,42 +34,14 @@ contract = web3.eth.contract(
     address=Web3.to_checksum_address(CONTRACT_ADDRESS),
     abi=abi,
 )
-
-
-def get_token_volume():
-    """Fetch the latest daily transfer volume from The Graph."""
-    url = "https://api.thegraph.com/subgraphs/name/tahatxt/transcript-tcript"
-    query = """
-    {
-      dailyVolumes(first: 1, orderBy: id, orderDirection: desc) {
-        id
-        volume
-      }
-    }
-    """
-    try:
-        resp = requests.post(url, json={"query": query}, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        latest = data["data"]["dailyVolumes"][0]
-        vol_tokens = int(latest["volume"]) / 10**18
-        print(f"Daily volume for id {latest['id']}: {vol_tokens} tokens")
-        return vol_tokens
-    except Exception as exc:
-        print(f"Error fetching token volume: {exc}")
-        return 0.0
     
 
-# AI Logic (Simple Rule)
+# AI Logic 
 def get_decision():
-        """Return an integer supply adjustment decision based on token volume."""
-        volume = get_token_volume()
-        if volume > 100_000:
-            return 2
-        elif volume < 5_000:
-            return -1
-        else:
-            return 0
+        """Return an integer supply adjustment decision based on functions folder calculation."""
+        # TODO: 
+
+        
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
