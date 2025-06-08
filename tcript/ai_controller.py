@@ -84,6 +84,6 @@ if __name__ == "__main__":
 
     if decision != 0:
         print("[ACTION] Sending transaction to adjust supply...")
-        # send_transaction(decision)
+        send_transaction(decision)
     else:
         print("[ACTION] No change — holding supply steady.")

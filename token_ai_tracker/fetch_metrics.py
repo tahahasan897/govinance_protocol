@@ -17,7 +17,7 @@ load_dotenv(SCRIPT_DIR / 'necessities.env')
 # Constants
 TOKEN_DEPLOY_BLOCK = 8470000
 
-INFURA_API_KEY = os.getenv('INFURA_API_KEY')
+INFURA_API_KEY = os.getenv('RPC_URL')
 CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS')
 if not INFURA_API_KEY or not CONTRACT_ADDRESS:
     raise SystemExit('INFURA_API_KEY and CONTRACT_ADDRESS must be set in .env')
@@ -101,8 +101,10 @@ while block <= latest_block:
     for raw in logs:
         event = contract.events.Transfer().process_log(raw)
         from_addr = event['args']['from'].lower()
+        if from_addr == '0x0000000000000000000000000000000000000000':
+            continue
         to_addr = event['args']['to'].lower()
-        value = int(event['args']['value']) // 10**18
+        value = int(event['args']['value'])
         blk_ts = w3.eth.get_block(raw['blockNumber']).timestamp
         day = datetime.fromtimestamp(blk_ts, timezone.utc).strftime('%Y-%m-%d')
 
@@ -116,6 +118,17 @@ while block <= latest_block:
 
 engine = create_engine(DB_URL)
 with engine.begin() as conn:
+    conn.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS daily_metrics (
+            day            TEXT    PRIMARY KEY,
+            volume         TEXT    NOT NULL,
+            holder_count   INTEGER NOT NULL,
+            unique_senders INTEGER NOT NULL,
+            active_wallets INTEGER NOT NULL
+        );
+        """
+    ))
     for day in sorted(daily_volume.keys()):
         conn.execute(
             text(
