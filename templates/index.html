@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transcript (TCRIPT) Landing</title>
+    <style>
+        /* Reset & base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #111;
+            line-height: 1.5;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        /* Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Navbar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            margin-left: 1rem;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            background: #000;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+        }
+
+        .hero p {
+            margin-top: 0.5rem;
+            font-size: 1.25rem;
+            color: #777;
+        }
+
+        .video-placeholder {
+            margin: 2rem auto;
+            width: 100%;
+            height: 300px;
+            background: #f4f4f4;
+            border-radius: 12px;
+        }
+
+        /* Token Info */
+        .info-section {
+            background: #fafafa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .info-section h3 {
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .info-section p+p {
+            margin-top: 0.75rem;
+            color: #555;
+        }
+
+        /* CTA */
+        .cta-section {
+            text-align: center;
+            margin: 4rem 0 2rem;
+        }
+
+        .cta-section h2 {
+            font-size: 2rem;
+        }
+
+        .cta-section p {
+            margin: 0.5rem 0 1.5rem;
+            color: #777;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            background: #000;
+            color: #fff;
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            padding: 2rem 0 1rem;
+            border-top: 1px solid #e5e5e5;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .footer-logo {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 3rem;
+            margin-top: 1rem;
+        }
+
+        .footer-links h4 {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .footer-links a {
+            display: block;
+            margin-bottom: 0.3rem;
+            color: inherit;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- NAVBAR -->
+        <header>
+            <div class="logo">ΤΡΑΝΣΚΡΙΠΤ</div>
+            <nav class="nav-links">
+                <a href="#about">About</a>
+                <a href="#whitepaper">Whitepaper</a>
+            </nav>
+        </header>
+
+        <!-- HERO -->
+        <section class="hero">
+            <h1>Decentralized Governance is NEAR!</h1>
+            <p>“Built Accountable. Designed for the People. Future”</p>
+            <div class="video-placeholder"></div>
+        </section>
+
+        <!-- TOKEN INFO -->
+        <section class="info-section" id="info">
+            <h3>Token Information</h3>
+            <p>
+                Contract Address: 0x123...789.
+                Supply: 1,000,000 tokens.
+                Decimals: 18.
+                Token type: ERC-20.
+                All info provided for transparency.
+            </p>
+            <p>
+                Read the whitepaper for details on tokenomics, allocation, and how to participate in our new ecosystem.
+            </p>
+        </section>
+
+        <!-- CTA -->
+        <section class="cta-section">
+            <h2>Help Us To Get Started</h2>
+            <p>Fund, Join, Share</p>
+            <a href="#fund" class="cta-button">Fund</a>
+        </section>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="container">
+        <div class="footer-logo">ΤΡΑΝΣΚΡΙΠΤ</div>
+        <div class="footer-links">
+            <div>
+                <h4>Connect</h4>
+                <a href="#">Telegram</a>
+                <a href="#">Twitter</a>
+                <a href="#">Etherscan</a>
+            </div>
+            <div>
+                <h4>Explore</h4>
+                <a href="#">Docs</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>

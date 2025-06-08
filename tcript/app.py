@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, send_from_directory
+from flask import Flask, send_from_directory
 from web3 import Web3
 import json
 import os
@@ -33,6 +33,7 @@ contract = w3.eth.contract(
 @app.route("/")
 def index():
     # TODO:
+    return send_from_directory(os.path.join(REPO_ROOT, "templates"), "index.html")
 
 if __name__ == "__main__":
     # Print out all registered routes to confirm /supply-data is active
