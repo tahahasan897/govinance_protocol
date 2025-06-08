@@ -1,0 +1,12 @@
+[
+  {
+    "inputs": [],
+    "name": "NoContract",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotEnoughGasForPubdata",
+    "type": "error"
+  }
+]

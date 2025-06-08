@@ -1,0 +1,51 @@
+[
+  {
+    "inputs": [],
+    "name": "NotEnoughGasForPubdata",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxTotalGas",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "uint16",
+        "name": "_maxReturnBytes",
+        "type": "uint16"
+      }
+    ],
+    "name": "callWithExactGasSafeReturnData",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "retData",
+        "type": "bytes"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pubdataGasSpent",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

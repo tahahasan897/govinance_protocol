@@ -1,0 +1,47 @@
+[
+  {
+    "inputs": [],
+    "name": "CustomRevertReason",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "returnData",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "returnLargeData",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "revertNoReason",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "revertWithReason",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]

@@ -15,9 +15,9 @@
 
 
 import sqlite3
-from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+import json 
 
 # Load environment variables from the repository root so that this module works
 # regardless of where it's executed from.
@@ -33,9 +33,26 @@ DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 # the code.
 TOTAL_SUPPLY = 1000000
 
-# Dynamic msct
-msct = 0.5
+# Path to persist the msct value between runs
+MSCT_STATE_PATH = os.path.join(REPO_ROOT, "msct_state.json")
 
+
+def load_msct(path: str, default: float = 0.5) -> float:
+    """Load the saved msct value from ``path`` or return ``default``."""
+    try:
+        with open(path) as f:
+            data = json.load(f)
+            return float(data.get("msct", default))
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
+        return default
+    
+def save_msct(path: str, value: float) -> None:
+    """Persist ``value`` to ``path`` in JSON format."""
+    with open(path, "w") as f:
+        json.dump({"msct": value}, f)
+
+# Dynamic msct loaded from persistent storage
+msct = load_msct(MSCT_STATE_PATH)
 
 def demand_index(db_path, total_supply):
     """
@@ -61,7 +78,7 @@ def demand_index(db_path, total_supply):
     cur.execute("""
         SELECT SUM(holder_count)
         FROM daily_metrics
-        WHERE day BETWEEN date ('now', '-13 days') AND date ('now', '-7 days'); 
+        WHERE day BETWEEN date('now', '-13 days') AND date('now', '-7 days'); 
     """)
     h_last = cur.fetchone()[0]
     h_last = int(h_last or 1)  # avoid div by zero
@@ -69,9 +86,9 @@ def demand_index(db_path, total_supply):
     # v_t: volume/total_supply*100
     v_t = (v_sum / total_supply) * 100
     # h_t: (present holders - last week holders) / last week holders
-    h_t = (h_sum - h_last) / h_last
+    h_t = (h_sum - h_last) / h_last if h_last else 0.0
     # c_t: unique_senders / active_wallets
-    c_t = (u_sum / a_sum)
+    c_t = (u_sum / a_sum) if a_sum else 0.0
 
     # Demand index D
     w_v, w_h, w_c = 0.5, 0.3, 0.2
@@ -100,6 +117,7 @@ def percent_rule(g_t, msct, k=0.6):
 if __name__ == "__main__":
     the_demand = demand_index(DB_PATH, TOTAL_SUPPLY)
     msct = adaptive_threshold(the_demand, msct)
+    save_msct(MSCT_STATE_PATH, msct)
     threshold = msct
     g_t = heat_gap(the_demand, threshold)
     percent = percent_rule(g_t, threshold)
@@ -108,12 +126,3 @@ if __name__ == "__main__":
     print(f"Threshold: {threshold}")
     print(f"Heat Gap (g_t): {g_t}")
     print(f"Percent Rule: {percent}")
-
-
-
-# Example usage (uncomment and set total_supply):
-# demand, v_t, h_t, c_t, h_sum, h_last = demand_index('token_metrics.db', total_supply)
-# threshold = adaptive_threshold(demand)
-# g_t = heat_gap(demand, threshold)
-# percent = percent_rule(g_t, threshold)
-# print(demand, v_t, h_t, c_t, threshold, g_t, percent)

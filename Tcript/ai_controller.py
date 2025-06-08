@@ -1,10 +1,11 @@
 # ai_controller.py
+from datetime import datetime
 import requests
 from web3 import Web3
 import json
 import os
 from dotenv import load_dotenv
-from functions import demand_index, adaptive_threshold, heat_gap, percent_rule
+from functions import demand_index, adaptive_threshold, heat_gap, percent_rule, save_msct, load_msct
 
 # Load environment variables from repository root so the script works regardless
 # of the current working directory.
@@ -13,11 +14,12 @@ ENV_PATH = os.path.join(REPO_ROOT, "necessities.env")
 load_dotenv(dotenv_path=ENV_PATH)
 
 # Config
-DB_PATH = os.getenv("DB_PATH")
+DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 RPC_URL = os.getenv("RPC_URL")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
+MSCT_STATE_PATH = os.getenv("MSCT_STATE_PATH", os.path.join(REPO_ROOT, "msct_state.json"))
 
 # Connect
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
@@ -34,14 +36,31 @@ contract = web3.eth.contract(
     address=Web3.to_checksum_address(CONTRACT_ADDRESS),
     abi=abi,
 )
+
+# Total supply of the token, can be set via environment variable
+fetching_total_supply = int(contract.functions.totalSupply().call())
+total_supply = fetching_total_supply / 10**18
+if not total_supply:
+    raise ValueError("Total supply is zero. Please check the contract address or token state.")
     
 
 # AI Logic 
 def get_decision():
-        """Return an integer supply adjustment decision based on functions folder calculation."""
-        # TODO: 
+    """Return an integer supply adjustment decision based on functions folder calculation."""
+    # First, make sure that today is Saturday.
+    today = datetime.now().date()
+    if today.weekday() != 5:
+        print("Today is not Saturday. No decision will be made.")
+        return 0
+    
+    # Calculate demand index
+    the_demand = demand_index(DB_PATH, total_supply)
+    msct = load_msct(MSCT_STATE_PATH) or 0.5
+    new_msct = adaptive_threshold(the_demand, msct)
+    save_msct(MSCT_STATE_PATH, new_msct)
+    percent = percent_rule(heat_gap(the_demand, new_msct), new_msct)
 
-        
+    return percent
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
@@ -65,6 +84,6 @@ if __name__ == "__main__":
 
     if decision != 0:
         print("[ACTION] Sending transaction to adjust supply...")
-        send_transaction(decision)
+        # send_transaction(decision)
     else:
         print("[ACTION] No change — holding supply steady.")

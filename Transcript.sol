@@ -28,36 +28,6 @@ contract TranscriptToken is ERC20 {
     uint256 public totalReleased;
 
     /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev percentChange is signed (e.g. +10 = +10 %, −5 = −5 %)
-    event SupplyAdjusted(
-        int256 indexed percentChange,
-        uint256 amountChanged,
-        uint256 newTotalSupply
-    );
-
-    event SupplyAdjustmentSkipped(
-        int256 indexed percentChange,
-        uint256 amountChangedBefore
-    ); 
-
-    event AIControllerUpdated(
-        address indexed previousController,
-        address indexed newController
-    );
-
-    /*//////////////////////////////////////////////////////////////
-                              MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-
-    modifier onlyAI() {
-        require(msg.sender == aiController, "TCRIPT: caller is not AI");
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
@@ -80,6 +50,15 @@ contract TranscriptToken is ERC20 {
     }
 
     /*//////////////////////////////////////////////////////////////
+                              MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    modifier onlyAI() {
+        require(msg.sender == aiController, "TCRIPT: caller is not AI");
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                            SUPPLY MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
@@ -98,12 +77,8 @@ contract TranscriptToken is ERC20 {
         // delta = currentSupply * |percent| / 100
         uint256 delta = (current * absPercent) / 100;
         // Emit a warning event
-        if (delta == 0) {
-            emit SupplyAdjustmentSkipped(percent, current); 
-            return; 
-        }
+        if (delta == 0) return; // nothing to do
         
-
         if (percent > 0) {
             /* ---------- EXPAND SUPPLY ---------- */
 
@@ -132,9 +107,6 @@ contract TranscriptToken is ERC20 {
                     totalReleased += autoTransfer; 
                 }
             }
-
-            emit SupplyAdjusted(percent, released + delta, totalSupply());
-
         } else {
             /* ---------- CONTRACT SUPPLY ---------- */
 
@@ -145,10 +117,6 @@ contract TranscriptToken is ERC20 {
             );
 
             _burn(aiController, delta);
-            // Optionally: update totalReleased if you burned tokens that were
-            // previously counted as released. For now we leave it unchanged.
-
-            emit SupplyAdjusted(percent, delta, totalSupply());
         }
     }
 
@@ -158,8 +126,6 @@ contract TranscriptToken is ERC20 {
 
     function updateAIController(address newAI) external onlyAI {
         require(newAI != address(0), "TCRIPT: zero-address AI");
-        address previous = aiController;
         aiController = newAI;
-        emit AIControllerUpdated(previous, newAI);
     }
 }
