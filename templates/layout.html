@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- TODO: Create a link for a favicon-->
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <title>TCRIPT: {% block title %} {% endblock %}</title>
+    </head>
+
+    <body>
+    
+        <div class="container">
+            <!-- NAVBAR -->
+            <header>
+                <a class="logo" href="/">ΤΡΑΝΣΚΡΙΠΤ</a>
+                <nav class="nav-links">
+                    <a href="/whitepaper">Whitepaper</a>
+                </nav>
+            </header>
+        </div>
+
+        <main>
+            {% block main %}{% endblock %}
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="container">
+            <div class="footer-logo">ΤΡΑΝΣΚΡΙΠΤ</div>
+            <div class="footer-links">
+                <div>
+                    <h4>Connect</h4>
+                    <a href="#">Telegram</a>
+                    <a href="#">Twitter</a>
+                    <a href="#">Etherscan</a>
+                </div>
+                <div>
+                    <h4>Explore</h4>
+                    <a href="#">Docs</a>
+                    <a href="#">FAQ</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+        </footer>
+    </body>
+</html>

@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% block title %}Fund{% endblock %}
+
+{% block main %}
+
+    <section class="container" style="text-align:center; margin-top:3rem;">
+        <h2>Support TCRIPT on Sepolia</h2>
+        <p>You’ll be prompted to switch your MetaMask network to Sepolia and send 0.1 ETH.</p>
+        <button id="fund-btn" class="cta-button">Fund 0.1 ETH</button>
+    </section>
+
+    <!-- Ethers.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5/dist/ethers.min.js"></script>
+    <script>
+        const TARGET = "{{ my_wallet_address }}";
+        const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
+
+        // Attempt to switch or add Sepolia
+        async function ensureSepolia() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: SEPOLIA_CHAIN_ID }]
+                });
+            } catch (switchError) {
+                // If Sepolia not added, add it
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: SEPOLIA_CHAIN_ID,
+                                chainName: 'Sepolia Test Network',
+                                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                                rpcUrls: ['https://rpc.sepolia.org'],
+                                blockExplorerUrls: ['https://sepolia.etherscan.io']
+                            }]
+                        });
+                    } catch (addError) {
+                        alert('Failed to add Sepolia network to your wallet.');
+                        return false;
+                    }
+                } else {
+                    alert('Please switch your MetaMask network to Sepolia and try again.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        document.getElementById("fund-btn").addEventListener("click", async () => {
+            if (!window.ethereum) {
+                return alert("MetaMask not detected");
+            }
+            // 1) Switch to Sepolia
+            const ok = await ensureSepolia();
+            if (!ok) return;
+
+            // 2) Request accounts
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+
+            // 3) Send 0.1 ETH
+            try {
+                const tx = await signer.sendTransaction({
+                    to: TARGET,
+                    value: ethers.utils.parseEther("0.1")
+                });
+                alert(`Transaction submitted! Hash: ${tx.hash}`);
+            } catch (err) {
+                console.error(err);
+                alert("Transaction failed: " + (err.message || err));
+            }
+        });
+    </script>
+
+{% endblock %}

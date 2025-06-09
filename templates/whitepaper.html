@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Whitepaper
+{% endblock %}
+
+{% block main %}
+    <div class="container">
+        <section class="info-section" id="info">
+            <h2>🧾 Transcript (TCRIPT) Whitepaper</h2>
+            <p><strong>NOTE:</strong> THIS IS A DEMO OF THE VISION, LATER IN THE FUTURE. IT MIGHT BE ADJUSTED</p>
+
+            <h3>Hybrid AI-Controlled Cryptocurrency with Physical Tangibility</h3>
+
+            <h3>1. Abstract</h3>
+            <p>Transcript (TCRIPT) is a next-generation hybrid cryptocurrency that bridges the digital and physical worlds
+                through a dual-layered ownership model. The digital form, known as Version, functions like traditional crypto:
+                it can be transacted, staked, and used for governance. The physical counterpart, known as V1, is a secure,
+                limited-edition, custom-designed cold wallet that embodies a tangible form of ownership and status.</p>
+            <p>Unlike conventional crypto assets, Transcript’s supply and reward dynamics are regulated by AI, creating a
+                self-adjusting economic system that reacts to market conditions. TCRIPT aims to provide users with the ability
+                to interact with both digital value and a physical store of status and identity — all while promoting
+                sustainability, user creativity, and real-world connection.</p>
+
+            <h3>2. Vision</h3>
+            <p>To reshape ownership in crypto by combining algorithmic intelligence with human creativity. By providing a
+                dynamic AI-managed economy and an exclusive physical asset linked to digital holdings, Transcript offers a new
+                form of personal and community-driven economic expression.</p>
+
+            <h3>3. Introduction</h3>
+            <p>🔧 <strong>Problem Statement</strong></p>
+            <ul>
+                <li>Cryptocurrency lacks tangible presence, making long-term emotional ownership harder to sustain.</li>
+                <li>Bitcoin has a fixed supply mechanism which will plateau around 2030-2035, reducing mining rewards and
+                    potentially security.</li>
+                <li>Ethereum’s EIP-1559 base fee increases user costs to deflate ETH.</li>
+                <li>Volatility discourages real-world utility and stable adoption.</li>
+                <li>Cold wallets are secure but lack personality, reward mechanics, and community involvement.</li>
+            </ul>
+            <p>✅ <strong>Solution</strong></p>
+            <ul>
+                <li>A dual economy: digital Version (TCRIPT) and physical V1 wallets.</li>
+                <li>AI-controlled supply that adjusts minting and burning to stabilize market dynamics without extra transaction
+                    fees.</li>
+                <li>A threshold-based redemption model: holding enough digital TCRIPT earns you the physical V1.</li>
+                <li>Physical assets are non-purchasable initially, increasing scarcity and reward value.</li>
+            </ul>
+
+            <h3>4. System Architecture</h3>
+            <h4>📱 Digital Asset: Version</h4>
+            <ul>
+                <li>Token name: TCRIPT</li>
+                <li>Type: ERC-20 (or equivalent L1/L2)</li>
+                <li>Functions: Transaction, staking, governance, eligibility tracking for V1</li>
+            </ul>
+            <h4>💼 Physical Asset: V1 Wallet</h4>
+            <ul>
+                <li>Name: V1 (first-gen physical cold wallet)</li>
+                <li>NFC-enabled</li>
+                <li>Dashboard with:<ul>
+                        <li>Quantity of TCRIPT held</li>
+                        <li>Real-time digital & physical value</li>
+                        <li>Signature space (limited collabs, series)</li>
+                    </ul>
+                </li>
+                <li>Versions: V2, V3, etc.</li>
+            </ul>
+            <h4>🧠 AI Supply Control</h4>
+            <p>Monitors market behavior (on-chain & off-chain) and dynamically adjusts:</p>
+            <ul>
+                <li>Redemption thresholds (e.g., 1000 TCRIPT → 1200 if demand surges)</li>
+                <li>Minting/burning rate</li>
+                <li>Staking yields based on sentiment and usage data</li>
+            </ul>
+
+            <h3>5. Tokenomics</h3>
+            <p>🔄 <strong>Two-Form Model</strong></p>
+            <ul>
+                <li>TCRIPT (Version): Core circulating asset</li>
+                <li>V1 Wallet: Claimed through holding threshold (not purchased)</li>
+            </ul>
+            <p>📉 <strong>Burn-to-Redeem System</strong></p>
+            <p>To receive a V1 wallet, user burns tokens, creating a deflationary effect.</p>
+            <p>📈 <strong>AI-Adjusted Thresholds</strong></p>
+            <p>Thresholds change based on market demand, circulating supply, and sentiment analysis.</p>
+            <p>🎁 <strong>Staking & Yield</strong></p>
+            <p>Rewards scale based on ecosystem health, holder activity, and redemption rarity.</p>
+
+            <h3>6. AI Model & Governance</h3>
+            <p>🧠 <strong>Inputs</strong></p>
+            <ul>
+                <li>On-chain data: transaction volume, wallet growth, staking patterns</li>
+                <li>Off-chain data: social sentiment, Google Trends, market health</li>
+                <li>Redemption flow: burn activity, unclaimed V1 demand</li>
+            </ul>
+            <p>⚙️ <strong>Mechanism</strong></p>
+            <p>Uses decision trees or RL algorithms for supply controls and periodic recalibrations.</p>
+            <p>🗳️ <strong>DAO Governance</strong>: Community votes on reward ratios, redemption rules, and design upgrades.</p>
+
+            <h3>7. Physical Wallet Redemption Logic</h3>
+            <p>🔐 <strong>Eligibility</strong>: Ownership above threshold unlocks redemption.</p>
+            <p>🔥 <strong>Burn-for-Claim</strong>: Tokens burned, V1 minted and serialized, then shipped.</p>
+            <p>🚫 <strong>No Purchase Option</strong>: V1s cannot be purchased initially to preserve scarcity.</p>
+            <p>🎨 <strong>Customization</strong>: Design options unlocked by holding time, early adopter status, and events.</p>
+
+            <h3>8. Roadmap</h3>
+            <p>Launch MVP (TCRIPT smart contract, wallet tracking UI), then iterate future versions.</p>
+
+            <h3>9. Security & Compliance</h3>
+            <ul>
+                <li>Smart contract audits by trusted third parties pre-launch.</li>
+                <li>Physical hardware security: NFC + encrypted cold storage.</li>
+                <li>Regulatory: KYC for redemption; region limitations for compliance.</li>
+            </ul>
+
+            <h3>10. Conclusion</h3>
+            <p>Transcript (TCRIPT) introduces a hybrid vision of crypto — acknowledging digital freedom while restoring tangible
+                ownership. AI-driven economy balancing and real-world collectible value transform crypto into an expressive,
+                community-empowered identity.</p>
+        </section>
+    </div>
+{% endblock %}
