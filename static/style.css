@@ -179,7 +179,7 @@ a.logo:active {
 footer {
     /* put it back into the document flow */
     position: static;
-    width: auto;
+    width: 60%;
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
@@ -216,15 +216,4 @@ footer {
     display: block;
     margin-bottom: 0.3rem;
     color: inherit;
-}
-
-/* Fund page */
-.fund-page {
-    text-align: center;
-    margin-top: 3rem;
-}
-
-.fund-page button,
-.fund-page input {
-    margin: 0.5rem;
 }
