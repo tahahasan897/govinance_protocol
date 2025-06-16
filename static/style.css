@@ -9,6 +9,13 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #111;
     line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
 }
 
 a {
@@ -209,4 +216,15 @@ footer {
     display: block;
     margin-bottom: 0.3rem;
     color: inherit;
+}
+
+/* Fund page */
+.fund-page {
+    text-align: center;
+    margin-top: 3rem;
+}
+
+.fund-page button,
+.fund-page input {
+    margin: 0.5rem;
 }
