@@ -4,14 +4,14 @@
 
 {% block main %}
 
-    <body>
+    <div class="container fund-page">
         <button id="connectButton">Connect</button>
         <button id="balanceButton">Get Balance</button>
         <label for="ethAmount">ETH Amount</label>
-        <input id="ethAmount" placeholder="0.1"/>
-        <button type="Button" id="fundButton">Fund</button>
-    </body>
+        <input id="ethAmount" placeholder="0.1" />
+        <button type="button" id="fundButton">Fund</button>
+    </div>
 
-    <script src="../static/index-ts.ts" type="module"></script>
+    <script src="{{ url_for('static', filename='index-ts.ts') }}" type="module"></script>
 
 {% endblock %}

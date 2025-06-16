@@ -23,7 +23,6 @@ a {
 }
 
 /* Navbar */
-/* Navbar */
 header {
     display: flex;
     justify-content: space-between;
@@ -43,9 +42,7 @@ header {
 a.logo,
 a.logo:visited {
     color: #111;
-    /* match body text color */
     text-decoration: none;
-    /* remove underline */
 }
 
 a.logo:hover,
@@ -133,15 +130,61 @@ a.logo:active {
     font-size: 1rem;
 }
 
+/* Fund page */
+.fund-page {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 3rem auto;
+    padding: 2rem;
+    background: #fafafa;
+    border-radius: 10px;
+    max-width: 600px;
+}
+
+.fund-page button,
+.fund-page input {
+    font-size: 1rem;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.fund-page button {
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.fund-page button:hover {
+    opacity: 0.8;
+}
+
+.fund-page input {
+    width: 100px;
+    text-align: center;
+}
+
 /* Footer */
 footer {
+    /* put it back into the document flow */
+    position: static;
+    width: auto;
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
     padding: 2rem 0 1rem;
+    margin-top: 3rem;
+    /* space above footer */
     border-top: 1px solid #e5e5e5;
     font-size: 0.9rem;
     color: #555;
+    background: transparent;
+    /* let body background show */
+    z-index: auto;
 }
 
 .footer-logo {
