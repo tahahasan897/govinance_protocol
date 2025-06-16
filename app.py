@@ -12,14 +12,14 @@ load_dotenv(ENV_PATH)
 
 # Configuration
 RPC_URL = os.getenv("RPC_URL")
-CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
+CONTRACT_ADDRESS = os.getenv("TOKEN_CONTRACT_ADDRESS")
 MY_WALLET_ADDRESS = os.getenv("MY_WALLET_ADDRESS")
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 5}))
 
 # Load the ABI relative to this file so running from other directories works
-ABI_PATH = os.getenv("ABI_FILE")
+ABI_PATH = os.getenv("TOKEN_ABI_FILE")
 with open(ABI_PATH) as f:
     abi = json.load(f)
 

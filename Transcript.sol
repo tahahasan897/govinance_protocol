@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title Transcript Token (TCRIPT)
@@ -15,17 +15,33 @@ contract TranscriptToken is ERC20 {
                                STATE
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice wallet allowed to call adjustSupply()
-    address public aiController;
-
     /// @notice one-time fixed mint on deployment (1 000 000 TCRIPT, 18 dec)
     uint256 public constant INITIAL_SUPPLY = 1_000_000 * 1e18;
 
     /// @notice 25 % of INITIAL_SUPPLY → 250 000 TCRIPT
     uint256 public constant CIRCULATING_CAP = INITIAL_SUPPLY / 4;
 
+    /// @notice the AI gets updated for the smart-wallet-contract once
+    bool private s_UpdatedAi = true; 
+
     /// @notice how many tokens have moved from treasury → circulation so far
     uint256 public totalReleased;
+
+    /// @notice wallet allowed to call adjustSupply()
+    address public aiController;
+
+    /// @notice the deployer
+    address public deployer; 
+
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Emitted when new tokens are minted into the AI treasury
+    event MintingHappened(uint256 amount);
+
+    /// @notice Emitted when tokens are burned from the AI treasury
+    event BurningHappened(uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -34,12 +50,12 @@ contract TranscriptToken is ERC20 {
     /**
      * @param _aiController EOA or contract that will govern mint/burn.
      */
-    constructor(address _aiController) ERC20("Transcript", "TCRIPT") {
-        require(_aiController != address(0), "TCRIPT: zero-address AI");
+    constructor(address _aiController, address _deployer) ERC20("Transcript", "TCRIPT") {
+        deployer = _deployer; 
         aiController = _aiController;
 
         // 1) Mint circulating tranche to deployer
-        _mint(msg.sender, CIRCULATING_CAP);
+        _mint(deployer, CIRCULATING_CAP);
 
         // 2) Mint treasury reserve to AI wallet
         uint256 treasuryReserve = INITIAL_SUPPLY - CIRCULATING_CAP; // 750 000
@@ -90,7 +106,7 @@ contract TranscriptToken is ERC20 {
                 released = delta > treasuryBal ? treasuryBal : delta;
 
                 if (released > 0) {
-                    _transfer(aiController, msg.sender, released);
+                    _transfer(aiController, deployer, released);
                     totalReleased += released;
                     delta -= released; // unmet demand
                 }
@@ -99,12 +115,14 @@ contract TranscriptToken is ERC20 {
             /* 2) if still not satisfied, mint the remainder to treasury */
             if (delta > 0) {
                 _mint(aiController, delta);
+                emit MintingHappened(delta); 
 
-                // auto-transfer some of this to circulation
-                uint256 autoTransfer = delta / 2; // 50%
+                // auto-transfer 50% of what was just minted
+                uint256 autoTransfer = delta / 2;
+
                 if (autoTransfer > 0) {
-                    _transfer(aiController, msg.sender, autoTransfer);
-                    totalReleased += autoTransfer; 
+                    _transfer(aiController, deployer, autoTransfer);
+                    totalReleased += autoTransfer;
                 }
             }
         } else {
@@ -117,6 +135,7 @@ contract TranscriptToken is ERC20 {
             );
 
             _burn(aiController, delta);
+            emit BurningHappened(delta);
         }
     }
 
@@ -124,8 +143,11 @@ contract TranscriptToken is ERC20 {
                         GOVERNANCE (AI WALLET ROTATE)
     //////////////////////////////////////////////////////////////*/
 
-    function updateAIController(address newAI) external onlyAI {
-        require(newAI != address(0), "TCRIPT: zero-address AI");
+    function updateAIController(address newAI) external {
+        require(s_UpdatedAi == true, "AI wallet already updated"); 
+        uint256 treasuryReserve = INITIAL_SUPPLY - CIRCULATING_CAP;
+        _transfer(aiController, newAI, treasuryReserve);
         aiController = newAI;
+        s_UpdatedAi = false; 
     }
 }

@@ -2,21 +2,13 @@
     {
         "inputs": [
             {
-                "internalType": "int256",
-                "name": "percent",
-                "type": "int256"
-            }
-        ],
-        "name": "adjustSupply",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "address",
                 "name": "_aiController",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_deployer",
                 "type": "address"
             }
         ],
@@ -115,25 +107,6 @@
             {
                 "indexed": true,
                 "internalType": "address",
-                "name": "previousController",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "newController",
-                "type": "address"
-            }
-        ],
-        "name": "AIControllerUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
                 "name": "owner",
                 "type": "address"
             },
@@ -154,96 +127,30 @@
         "type": "event"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "spender",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "value",
-                "type": "uint256"
-            }
-        ],
-        "name": "approve",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "anonymous": false,
         "inputs": [
             {
-                "indexed": true,
-                "internalType": "int256",
-                "name": "percentChange",
-                "type": "int256"
-            },
-            {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "amountChanged",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "newTotalSupply",
+                "name": "amount",
                 "type": "uint256"
             }
         ],
-        "name": "SupplyAdjusted",
+        "name": "BurningHappened",
         "type": "event"
     },
     {
         "anonymous": false,
         "inputs": [
             {
-                "indexed": true,
-                "internalType": "int256",
-                "name": "percentChange",
-                "type": "int256"
-            },
-            {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "amountChangedBefore",
+                "name": "amount",
                 "type": "uint256"
             }
         ],
-        "name": "SupplyAdjustmentSkipped",
+        "name": "MintingHappened",
         "type": "event"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "to",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "value",
-                "type": "uint256"
-            }
-        ],
-        "name": "transfer",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
     },
     {
         "anonymous": false,
@@ -271,43 +178,40 @@
         "type": "event"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "from",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "to",
-                "type": "address"
-            },
+        "inputs": [],
+        "name": "CIRCULATING_CAP",
+        "outputs": [
             {
                 "internalType": "uint256",
-                "name": "value",
+                "name": "",
                 "type": "uint256"
             }
         ],
-        "name": "transferFrom",
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "INITIAL_SUPPLY",
         "outputs": [
             {
-                "internalType": "bool",
+                "internalType": "uint256",
                 "name": "",
-                "type": "bool"
+                "type": "uint256"
             }
         ],
-        "stateMutability": "nonpayable",
+        "stateMutability": "view",
         "type": "function"
     },
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "newAI",
-                "type": "address"
+                "internalType": "int256",
+                "name": "percent",
+                "type": "int256"
             }
         ],
-        "name": "updateAIController",
+        "name": "adjustSupply",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -353,24 +257,35 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "approve",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "account",
                 "type": "address"
             }
         ],
         "name": "balanceOf",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "CIRCULATING_CAP",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -396,12 +311,12 @@
     },
     {
         "inputs": [],
-        "name": "INITIAL_SUPPLY",
+        "name": "deployer",
         "outputs": [
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "stateMutability": "view",
@@ -457,6 +372,72 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "transfer",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newAI",
+                "type": "address"
+            }
+        ],
+        "name": "updateAIController",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     }
 ]
