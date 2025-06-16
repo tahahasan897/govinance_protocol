@@ -1,4 +1,4 @@
-# Transcript Project
+# ΤΡΑΝΣΚΡΙΠΤ Project
 
 The Transcript Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (TCRIPT) with a unique supply management mechanism, where an AI backend can propose and execute supply adjustments based on on-chain and off-chain metrics. The project includes a Flask web dashboard for transparency and community engagement.
 
