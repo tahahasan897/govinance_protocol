@@ -110,12 +110,12 @@ contract SmartAIWallet {
      * @notice Adjust token supply by a percent. Can be called once per week by any owner.
      */
     function adjustSupply(int256 percent) external onlyAI {
-        // Make the call gets executed once per week and only on Saturday
-        uint256 dayOfWeek = (block.timestamp / 1 days + 4) % 7;
+        // // Make the call gets executed once per week and only on Saturday
+        // uint256 dayOfWeek = (block.timestamp / 1 days + 4) % 7;
         
-        require(dayOfWeek == 6, "Can only call on Saturday"); 
-        require(block.timestamp >= lastExecutedWeek + 7 days, "SmartAIWallet: already executed this week");
-        lastExecutedWeek = block.timestamp;
+        // require(dayOfWeek == 6, "Can only call on Saturday"); 
+        // require(block.timestamp >= lastExecutedWeek + 7 days, "SmartAIWallet: already executed this week");
+        // lastExecutedWeek = block.timestamp;
 
         i_token.adjustSupply(percent);
         emit SupplyAdjusted(percent, block.timestamp, msg.sender);
@@ -129,13 +129,16 @@ contract SmartAIWallet {
         i_token.updateAIController(newAI);
     }
 
-
-    /**
-     * @notice Fallback to receive ETH. Accepts ETH to wallet directly.
-     */
-    receive() external payable {
-        uint256 usdValue = PriceConverter.getConversionRate(msg.value, s_priceFeed);
-        require(usdValue >= MINIMUM_USD, "You need to spend more than 5 dollars!");
+    /// @notice Funds our contract based on the ETH/USD price.
+    function fund() public payable {
+        require(PriceConverter.getConversionRate(msg.value, s_priceFeed) >= MINIMUM_USD, "You need to spend more ETH!");
     }
 
+    /// @notice Funds can be withdrawn by the first owner. 
+    function Withdraw() public onlyOwner {
+        require(msg.sender == owners[0], "SmartAIWallet: only first owner");
+        address payable firstOwner = payable(owners[0]);
+        (bool success, ) = firstOwner.call{ value: address(this).balance }("");
+        require(success, "SmartAIWallet: withdrawal failed");
+    }
 }

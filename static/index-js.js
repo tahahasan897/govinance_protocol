@@ -1,100 +1,117 @@
-import {createWalletClient, custom, createPublicClient, parseEther, formatEther} from "https://esm.sh/viem"
-import {contractAddress, abi} from "constants-js.js"
+// index-js.js
 
-const connectButton = document.getElementById("connectButton")
-const fundButton = document.getElementById("fundButton")
-const ethAmountInput = document.getElementById("ethAmount")
-const balanceButton = document.getElementById("balanceButton")
-const withdrawButton = document.getElementById("withdrawButton")
+import {
+    createWalletClient,
+    custom,
+    createPublicClient,
+    parseEther,
+    formatEther
+} from "https://esm.sh/viem";
+import { contractAddress, abi } from "./constants-js.js";
 
-let walletClient
-let publicClient
+// manually define zkSync Sepolia
+const zksyncSepolia = {
+    id: 300,
+    name: "zkSync Sepolia Testnet",
+    network: "sepolia",
+    rpcUrls: {
+        default: {
+            http: ["https://sepolia.era.zksync.dev"]
+        }
+    },
+    nativeCurrency: {
+        name: "Ether",
+        symbol: "ETH",
+        decimals: 18
+    },
+    blockExplorers: {
+        default: {
+            name: "zkSync Explorer",
+            url: "https://sepolia.explorer.zksync.io"
+        }
+    }
+};
+
+const connectButton = document.getElementById("connectButton");
+const fundButton = document.getElementById("fundButton");
+const ethAmountInput = document.getElementById("ethAmount");
+const balanceButton = document.getElementById("balanceButton");
+const withdrawButton = document.getElementById("withdrawButton");
+
+let walletClient, publicClient;
 
 async function connect() {
-    if (typeof window.ethereum !== "undefined") {
-
-        walletClient = createWalletClient({
-            transport: custom(window.ethereum)
-        })
-        await walletClient.requestAddresses()
-        connectButton.innerHTML = "Connected!" 
-
+    if (window.ethereum) {
+        walletClient = createWalletClient({ transport: custom(window.ethereum) });
+        await walletClient.requestAddresses();
+        connectButton.textContent = "Connected!";
     } else {
-        connectButton.innerHTML = "Please install MetaMask!"
+        connectButton.textContent = "Please install MetaMask!";
     }
 }
 
 async function fund() {
-    const ethAmount = ethAmountInput.value
-    console.log(`Funding with ${ethAmount}...`)
-
-    if (typeof window.ethereum !== "undefined") {
-
-        walletClient = createWalletClient({
-            transport: custom(window.ethereum)
-        })
-        const [connectedAccount] = await walletClient.requestAddresses()
-
-        publicClient = createPublicClient({
-            transcport: custom(window.ethereum)
-        })
-        const { request } = await publicClient.simulateContract({
-            address: contractAddress,
-            abi: abi,
-            functionName: "fund", 
-            account: connectedAccount,
-            chain:,
-            value: parseEther(ethAmount),
-        })
-       
-        const hash = await walletClient.writeContract(request)
-        console.log(hash)
-
-    } else {
-        connectButton.innerHTML = "Please install MetaMask!"
+    if (!window.ethereum) {
+        connectButton.textContent = "Please install MetaMask!";
+        return;
     }
+
+    const ethAmount = ethAmountInput.value;
+    walletClient = createWalletClient({ transport: custom(window.ethereum) });
+    const [account] = await walletClient.requestAddresses();
+
+    publicClient = createPublicClient({ transport: custom(window.ethereum) });
+    const { request } = await publicClient.simulateContract({
+        address: contractAddress,
+        abi,
+        functionName: "fund",
+        account,
+        chain: zksyncSepolia,
+        value: parseEther(ethAmount),
+    });
+
+    const txHash = await walletClient.writeContract(request);
+    console.log("Fund tx hash:", txHash);
 }
 
 async function withdraw() {
-    if (typeof window.ethereum !== "undefined") {
-        walletClient = createWalletClient({
-            transport: custom(window.ethereum),
-        })
-        const [connectedAccount] = await walletClient.requestAddresses()
-        const currentChain = await getCurrentChain(walletClient)
-
-        publicClient = createPublicClient({
-            transport: custom(window.ethereum),
-        })
-        const { request } = await publicClient.simulateContract({
-            address: contractAddress,
-            abi: abi,
-            functionName: "withdraw",
-            account: connectedAccount,
-            chain: ,
-        })
-
-        const hash = await walletClient.writeContract(request)
-        console.log("Withdrawal transaction hash:", hash)
-    } else {
-        connectButton.innerHTML = "Please install MetaMask!"
+    if (!window.ethereum) {
+        connectButton.textContent = "Please install MetaMask!";
+        return;
     }
+
+    walletClient = createWalletClient({ transport: custom(window.ethereum) });
+    const [account] = await walletClient.requestAddresses();
+
+    publicClient = createPublicClient({ transport: custom(window.ethereum) });
+    const { request } = await publicClient.simulateContract({
+        address: contractAddress,
+        abi,
+        functionName: "Withdraw", // must match exactly your ABI
+        account,
+        chain: zksyncSepolia,
+    });
+
+    const txHash = await walletClient.writeContract(request);
+    console.log("Withdraw tx hash:", txHash);
 }
 
 async function getBalance() {
-    if (typeof window.ethereum !== "undefined") {
-
-        publicClient = createPublicClient({
-            transport: custom(window.ethereum)
-        })
-        const balance = await publicClient.getBalance({
-            address: contractAddress
-        })
-        console.log(formatEther(balance))
+    if (!window.ethereum) {
+        connectButton.textContent = "Please install MetaMask!";
+        return;
     }
+
+    publicClient = createPublicClient({ transport: custom(window.ethereum) });
+    const balance = await publicClient.getBalance({
+        address: contractAddress,
+        chain: zksyncSepolia
+    });
+    console.log("Contract balance:", formatEther(balance), "ETH");
 }
 
-connectButton.onclick = connect 
-fundButton.onclick = fund
-balanceButton.onclick = getBalance
-withdrawButton.onclick = withdraw
+connectButton.onclick = connect;
+fundButton.onclick = fund;
+balanceButton.onclick = getBalance;
+withdrawButton.onclick = withdraw;
+  

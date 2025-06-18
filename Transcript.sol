@@ -21,8 +21,11 @@ contract TranscriptToken is ERC20 {
     /// @notice 25 % of INITIAL_SUPPLY → 250 000 TCRIPT
     uint256 public constant CIRCULATING_CAP = INITIAL_SUPPLY / 4;
 
+    /// @notice `factor` values are scaled by 1e18 (so 10% ⇒ 0.10*1e18 = 1e17)
+    uint256 private constant SCALE = 1e18; 
+
     /// @notice the AI gets updated for the smart-wallet-contract once
-    bool private s_UpdatedAi = true; 
+    bool private s_updatedAi = true; 
 
     /// @notice how many tokens have moved from treasury → circulation so far
     uint256 public totalReleased;
@@ -79,23 +82,21 @@ contract TranscriptToken is ERC20 {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Increase or decrease totalSupply by an integer percentage.
-     * @dev Positive `percent` releases first from treasury, then mints the
-     *      shortfall (no hard cap). Negative burns from AI balance.
-     * @param percent whole-percent change (e.g. +10, −5). 0 does nothing.
+     * @notice Increase or decrease totalSupply by a non-fixed factor number.
+     * @dev Positive `factor` releases first from treasury, then mints the
+     *  shortfall (no hard cap). Negative burns from AI balance (If there are enough to burn).
+     * @param factor as a non-fixed percent change (e.g. +10, −5, +0.053, -12.245, etc...). 0 does nothing.
      */
-    function adjustSupply(int256 percent) external onlyAI {
-        require(percent != 0, "TCRIPT: percent is zero");
+    function adjustSupply(int256 factor) external onlyAI {
+        require(factor != 0, "TCRIPT: percent is zero");
 
         uint256 current = totalSupply();
-        uint256 absPercent = uint256(percent > 0 ? percent : -percent);
+        uint256 absFactor = uint256(factor > 0 ? factor : -factor);
 
-        // delta = currentSupply * |percent| / 100
-        uint256 delta = (current * absPercent) / 100;
-        // Emit a warning event
-        if (delta == 0) return; // nothing to do
+        // delta = currentSupply * |percent| / SCALE
+        uint256 delta = (current * absFactor) / SCALE;
         
-        if (percent > 0) {
+        if (factor > 0) {
             /* ---------- EXPAND SUPPLY ---------- */
 
             uint256 released;
@@ -144,10 +145,10 @@ contract TranscriptToken is ERC20 {
     //////////////////////////////////////////////////////////////*/
 
     function updateAIController(address newAI) external {
-        require(s_UpdatedAi == true, "AI wallet already updated"); 
+        require(s_updatedAi == true, "AI wallet already updated"); 
         uint256 treasuryReserve = INITIAL_SUPPLY - CIRCULATING_CAP;
         _transfer(aiController, newAI, treasuryReserve);
         aiController = newAI;
-        s_UpdatedAi = false; 
+        s_updatedAi = false; 
     }
 }

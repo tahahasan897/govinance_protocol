@@ -33,7 +33,6 @@ contract = w3.eth.contract(
 
 @app.route("/")
 def index():
-    # TODO:
     return render_template("index.html")
 
 @app.route("/whitepaper", methods=["GET"])
@@ -46,6 +45,4 @@ def fund():
     
 
 if __name__ == "__main__":
-    # Print out all registered routes to confirm /supply-data is active
-    print("URL map:", app.url_map)
     app.run(debug=True)

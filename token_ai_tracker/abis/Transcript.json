@@ -207,7 +207,7 @@
         "inputs": [
             {
                 "internalType": "int256",
-                "name": "percent",
+                "name": "factor",
                 "type": "int256"
             }
         ],

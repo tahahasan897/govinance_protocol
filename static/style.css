@@ -29,6 +29,11 @@ a {
     padding: 2rem;
 }
 
+/* Navigation container */
+.nav-container {
+    width: 60%;
+}
+
 /* Navbar */
 header {
     display: flex;
@@ -157,6 +162,31 @@ a.logo:active {
     padding: 0.6rem 1rem;
     border: 1px solid #ccc;
     border-radius: 6px;
+}
+
+/* Position the connect button at the top center */
+#connectButton {
+    flex-basis: 80%;
+    text-align: center;
+    margin-bottom: 1rem;
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    transition: opacity 0.2s;
+}
+
+#connectButton:hover {
+    opacity: 0.8;
+}
+
+/* Style the fund button */
+#fundButton {
+    background: blue;
+    color: white;
 }
 
 .fund-page button {

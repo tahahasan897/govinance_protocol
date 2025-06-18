@@ -28,7 +28,7 @@ if not all([RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_
     raise SystemExit('RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_FILE, WALLET_ABI_FILE must be set in .env')
 
 # ─────── Constants ───────
-START_DEPLOY_BLOCK = 5_284_000
+START_DEPLOY_BLOCK = 5_306_900
 
 # ─────── Load last processed block ───────
 def load_last_block(path: Path) -> int:

@@ -69,7 +69,7 @@ def demand_index(db_path, total_supply):
         WHERE day BETWEEN date('now', '-6 days') AND date('now');
     """)
     v_sum, h_sum, u_sum, a_sum = cur.fetchone()
-    v_sum = int(v_sum or 0)
+    v_sum = float(v_sum or 0)
     h_sum = int(h_sum or 0)
     u_sum = int(u_sum or 0)
     a_sum = int(a_sum or 0)

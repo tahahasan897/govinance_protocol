@@ -25,7 +25,7 @@ MSCT_STATE_PATH = os.getenv("MSCT_STATE_PATH", os.path.join(REPO_ROOT, "msct_sta
 # Connect
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-# Load ABI from necessities.env that leads to token_ai_tracker/abis/Transcript.json
+# Load ABI from necessities.env that leads to token_ai_tracker/abis/SmartAIWallet.json
 ABI_PATH = os.getenv("WALLET_ABI_FILE")
 with open(ABI_PATH) as f:
     abi = json.load(f)
@@ -40,7 +40,7 @@ contract = web3.eth.contract(
 
 # Total supply of the token, can be set via environment variable
 fetching_total_supply = int(contract.functions.readSupply().call())
-total_supply = fetching_total_supply / 10**18
+total_supply = fetching_total_supply / 1e18
 if not total_supply:
     raise ValueError("Total supply is zero. Please check the contract address or token state.")
     
@@ -83,10 +83,10 @@ if __name__ == "__main__":
     fixed_point = int(decision * scale)
     # → e.g. 53245000000000000
 
-    print(f"[AI DECISION] Returned: {fixed_point}%")
+    print(f"[AI DECISION] Returned: {fixed_point}")
 
     if fixed_point != 0:
         print("[ACTION] Sending transaction to adjust supply...")
-        send_transaction(fixed_point)
+        # send_transaction(fixed_point)
     else:
         print("[ACTION] No change — holding supply steady.")
