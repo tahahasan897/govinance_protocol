@@ -111,11 +111,11 @@ contract SmartAIWallet {
      */
     function adjustSupply(int256 percent) external onlyAI {
         // // Make the call gets executed once per week and only on Saturday
-        // uint256 dayOfWeek = (block.timestamp / 1 days + 4) % 7;
+        uint256 dayOfWeek = (block.timestamp / 1 days + 4) % 7;
         
-        // require(dayOfWeek == 6, "Can only call on Saturday"); 
-        // require(block.timestamp >= lastExecutedWeek + 7 days, "SmartAIWallet: already executed this week");
-        // lastExecutedWeek = block.timestamp;
+        require(dayOfWeek == 6, "Can only call on Saturday"); 
+        require(block.timestamp >= lastExecutedWeek + 7 days, "SmartAIWallet: already executed this week");
+        lastExecutedWeek = block.timestamp;
 
         i_token.adjustSupply(percent);
         emit SupplyAdjusted(percent, block.timestamp, msg.sender);
