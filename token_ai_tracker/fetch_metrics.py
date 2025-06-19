@@ -28,6 +28,7 @@ if not all([RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_
     raise SystemExit('RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_FILE, WALLET_ABI_FILE must be set in .env')
 
 # ─────── Constants ───────
+# zkSync closest block to start from there (It needs to be adjusted in the future runtime). 
 START_DEPLOY_BLOCK = 5_306_900
 
 # ─────── Load last processed block ───────
