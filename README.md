@@ -40,13 +40,13 @@ as a regular token for trading, staking, and so on. So, how can it determine whe
   
 Currently, the volume weight w_v is set highest at 0.5, because volume is generally considered the most important metric. However, this can be adjusted depending on the goal. A more balanced setup might be:
   
-  w_v = 0.4
-  
-  
-  w_h = 0.4
-  
-  
-  w_c = 0.2
+    w_v = 0.4
+    
+    
+    w_h = 0.4
+    
+    
+    w_c = 0.2
   
   
   Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
