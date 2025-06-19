@@ -39,17 +39,11 @@ as a regular token for trading, staking, and so on. So, how can it determine whe
   
   
 Currently, the volume weight w_v is set highest at 0.5, because volume is generally considered the most important metric. However, this can be adjusted depending on the goal. A more balanced setup might be:
+  - w_v = 0.4
+  - w_h = 0.4
+  - w_c = 0.2
   
-    w_v = 0.4
-    
-    
-    w_h = 0.4
-    
-    
-    w_c = 0.2
-  
-  
-  Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
+Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
   
 - **Adaptive Threshold:**
     
@@ -93,7 +87,10 @@ The key ideas are:
 
 Once we've gotten through how the mathematics work. The project needs to fetch data points, that's where `token_ai_tracker/fetch_metrics.py` comes into play. The file get's to run everyday in order to fetch for the data, so that it can store it in a SQL database
 called `token_metrics.db`. Then when it comes Saturday (end of the Week). `tcript/ai_controller.py` gets ran in order to set a decision on whether to create/destroy or do nothing towards the total supply. Now, at the beginning. It is not going to start by minting
-the tokens. Almost 25% of the tokens when the contract gets deployed. It is gonna be sent towards the deployer (See the "Compile and deploy the smart contracts" section down below). And the rest is gonna be sent towards the AI wallet (which is 75%). So, once the backend is done finishing with the decision. that percent factor is gonna go towards the AI treasury wallet, and it is gonna determine how much to transfer depending if the percent is greater or less than 0. If it is 0, it will do nothing. 
+the tokens. Once inititally, `Transcript.sol` gets deployed, 25% of the tokens is gonna be sent towards the deployer (See the "Compile and deploy the smart contracts" section down below). And the rest is gonna be sent towards the AI wallet (which is 75%). So, once the backend is done finishing with the decision. that percent factor is gonna go towards the AI treasury wallet, and it is gonna determine how much to transfer depending if the percent is greater or less than 0. If it is 0, it will do nothing. Now, that is gonna depend on 
+if there is enough tokens in the treasury. If not, there is such thing as "delta" (Checkout `Transcript.sol` to know more about the adjustSupply() function). And if delta is not 0, meaning that the percent that it should release. Then it will mint the rest to the treasury, and transfer half of that into the deployer's account. 
+
+The matter of relying on the deployer to distribute the tokens into whether it be a liquidity, DEX, airdrop, rewards, etc. You would start to know that it is not considered to be a point of satisfaction. And in order for that to accomplish, it is gonna require something as a "distributor contract". That way, when the tokens gets to be taken out. It is gonna distribute to all of its people. But that is gonna be costy, and at the beginning. We gonna start to experiement the project, until it is gonna be gone on its own and be fully decentralized. 
 
 ## Getting Started
 
