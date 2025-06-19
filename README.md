@@ -22,7 +22,51 @@ The Transcript Project is a decentralized, AI-based token governance platform. I
 ## How This Project Works:
 
 The purpose of this project is to set the data to be ready in order to train an AI model to start taking control over the governance policy. The project is yet experiemental, but it can set to go on it's own
-as a regular token for trading, staking, and so on. So, how can it determine whether to mint/burn or doesn't do any change? Well, you can checkout `functions.py` to see how it works. But here is a brief explanation:
+as a regular token for trading, staking, and so on. Let's go through the main folders/files, starting with the top and work our way down:
+
+- **`tcript`**:
+  - `ai_controller.py`:
+    This file, is an AI-driven supply controller for your TranscriptToken ecosystem. Here’s what it does:
+
+    - Purpose:
+    
+      It connects to your deployed SmartAIWallet contract on-chain.
+      It uses AI/algorithmic logic (from your functions module) to decide whether to increase, decrease, or hold the token        supply.
+      It can send a transaction to the contract to adjust the supply based on this decision.
+      
+    - How it works
+      1. Environment & Config Loading
+      
+        Loads environment variables (RPC URL, contract address, ABI path, private key, etc.) from necessities.env.
+        Loads the contract ABI from the path specified in the environment.
+      
+      2. Blockchain Connection
+      
+        Connects to the blockchain using Web3 and the provided RPC URL.
+        Instantiates a contract object for interacting with the SmartAIWallet.
+      
+      3. Supply Fetching
+      
+        Reads the current total supply from the contract and converts it from wei to tokens.
+      
+      4. AI Logic
+      
+        Calls functions from your functions.py (like demand_index, adaptive_threshold, heat_gap, percent_rule) to analyze           metrics and decide on a supply adjustment percentage.
+        Scales this percentage to a fixed-point integer (for on-chain compatibility).
+      
+      5. Transaction Sending
+      
+        If the AI decision is nonzero, it builds and (optionally) sends a transaction to the contract’s adjustSupply function       with the computed adjustment factor.
+  
+      6. Execution
+      
+        When run as a script, it prints the AI’s decision and either sends the transaction or holds steady.
+    
+    - Summary
+      This script is an automated, data-driven supply manager for your token, using on-chain data and AI logic to decide and execute supply adjustments on your smart contract.
+      
+
+So, how can it determine whether to mint/burn or doesn't do any change? Well, you can checkout `functions.py` to see how it works. But here is a brief explanation:
 
 - **Demand Index Function:**
 
@@ -84,6 +128,70 @@ The key ideas are:
   - A weighted demand index that considers volume %, holder-growth, and velocity/churn.
   - An adaptive threshold that reacts to demand shifts.
   - A sensitivity scaling mechanism to keep changes stable as the market matures.
+
+
+- **`token_ai_tracker`**:
+  - `abis`:
+    Purpose: Stores contract ABI files in JSON format.
+    What it does:
+    Contains the ABI definitions for your smart contracts (e.g., SmartAIWallet.json, Transcript.json).
+    These files are loaded by Python scripts and the backend to interact with contracts on-chain.
+
+  - `fetch_metrics.py`:
+    Purpose: Fetches and aggregates on-chain token activity.
+    What it does:
+    Connects to the blockchain, fetches logs/events from the TranscriptToken contract.
+    Aggregates daily metrics (volume, holders, senders, wallets, minted, burned, total supply).
+    Writes these metrics to a SQLite database for analytics and AI use.
+
+- **`app.py`**:
+  Purpose: Flask web server for your dApp.
+  What it does:
+  Serves web pages (index, whitepaper, fund).
+  Loads contract ABI and connects to the blockchain.
+  Passes config and wallet info to templates for frontend use.
+
+- **`msct_state.json`**:
+  Purpose: Persists the msct value between runs.
+  What it does:
+  Stores the current msct (moving supply control threshold) as JSON.
+  Used by functions.py and ai_controller.py to maintain state across executions.
+
+- **`PriceConverter.sol`**:
+  Purpose: Solidity library for ETH/USD price conversion.
+  What it does:
+  Fetches ETH price from Chainlink oracles.
+  Converts ETH amounts to USD for funding logic in SmartAIWallet.
+
+- **`SmartAIWallet.sol`**:
+  Purpose: Smart contract for AI-controlled treasury and supply management.
+  What it does:
+  Manages ownership, funding, and withdrawal.
+  Calls adjustSupply on the TranscriptToken contract based on AI decisions.
+  Restricts supply adjustment to once per week and only by the AI controller.
+
+- **`state.json`**:
+  Purpose: Tracks the last processed block for metrics fetching.
+  What it does:
+  Stores the last block number processed by fetch_metrics.py.
+  Ensures the script only fetches new logs/events on subsequent runs.
+
+- **`token_metrics.db`**:
+  Purpose:
+  Stores all aggregated daily token metrics for your project.
+  What it does:
+  Contains a table (likely daily_metrics) with columns such as day, volume, holder_count, unique_senders, active_wallets, minted, burned, and total_supply.
+  Populated by fetch_metrics.py and used by your AI controller and analytics to track token activity, supply changes, and user engagement over time.
+
+- **`Transcript.sol`**:
+  Purpose:
+  Implements the main ERC-20 token contract for your project, called TranscriptToken (TCRIPT).
+  What it does:
+  Mints an initial supply (1,000,000 tokens), splitting 25% to the deployer and 75% to the AI-controlled treasury.
+  Allows the AI controller (SmartAIWallet) to adjust supply up or down via the adjustSupply function, which can mint, burn, or release tokens from the treasury.
+  Emits events for minting and burning.
+  Includes logic for rotating the AI controller wallet if needed.
+  Enforces that only the AI controller can call supply adjustment functions.
 
 Once we've gotten through how the mathematics work. The project needs to fetch data points, that's where `token_ai_tracker/fetch_metrics.py` comes into play. The file get's to run everyday in order to fetch for the data, so that it can store it in a SQL database
 called `token_metrics.db`. Then when it comes Saturday (end of the Week). `tcript/ai_controller.py` gets ran in order to set a decision on whether to create/destroy or do nothing towards the total supply. Now, at the beginning. It is not going to start by minting
