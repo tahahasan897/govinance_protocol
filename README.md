@@ -1,6 +1,6 @@
 # ΤΡΑΝΣΚΡΙΠΤ Project
 
-The Transcript Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (TCRIPT) with a unique supply management mechanism, where an AI backend can propose and execute supply adjustments based on on-chain metrics. The project includes a Flask web dashboard for transparency and community engagement.
+The Transcript Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (TCRIPT) with a unique supply management mechanism based on a mathematical algorithm. Where an automated AI backend can propose and execute supply adjustments based on on-chain metrics (As well as off-chain metrics in the future). The project includes a Flask web dashboard for transparency and community engagement, a backend logic, both of the contracts, database, etc... 
 
 ## Features
 
@@ -14,10 +14,82 @@ The Transcript Project is a decentralized, AI-based token governance platform. I
   - Can only adjust supply once per week (Saturday)
   - Integrates Chainlink price feeds for on-chain ETH/USD valuation
 
-- **Web Dashboard:**  
+- **Web Dashboard (STILL IN PROGRESS)**
   - Flask-based frontend  
   - Displays token info, supply history, and project documentation  
   - Community call-to-action and funding links
+
+## How This Project Works:
+
+The purpose of this project is to set the data to be ready in order to train an AI model to start taking control over the governance policy. The project is yet experiemental, but it can set to go on it's own
+as a regular token for trading, staking, and so on. So, how can it determine whether to mint/burn or doesn't do any change? Well, you can checkout `functions.py` to see how it works. But here is a brief explanation:
+
+- **Demand Index Function:**
+
+  The demand index is defined as:
+  
+  f(D) = w_v(v_t) + w_h(h_t) + w_c(c_t)
+  
+  
+  Where:
+  
+  v_t, h_t, and c_t are the weekly-summed values for volume %, holder-growth, and velocity/churn. Each calculated using       their own formulas.
+  
+  w_v, w_h, and w_c are the weights that determine the importance of each factor.
+  
+  
+Currently, the volume weight w_v is set highest at 0.5, because volume is generally considered the most important metric. However, this can be adjusted depending on the goal. A more balanced setup might be:
+  
+  w_v = 0.4
+  
+  
+  w_h = 0.4
+  
+  
+  w_c = 0.2
+  
+  
+  Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
+  
+- **Adaptive Threshold:**
+    
+  The adaptive threshold determines when a token is considered "HOT" or not:
+  
+  If the demand index is greater than the threshold, the token is HOT. But, if the demand index is below the threshold, demand is considered low — it may be a signal to burn the token.
+  
+  
+  The adaptive threshold is calculated using the function:
+  f(msct) = msct × (1 + ga × (D − msct))
+  
+  
+  Where:
+  
+  msct (initially set to 0.5) represents half of the token supply.
+  
+  
+  ga is the learning rate, defaulted to 0.2.
+  
+  
+  This function adjusts the threshold over time. If the demand doesn't exceed 0.5 (i.e., half the supply), the function remains inactive. But once demand surpasses that point, it reacts accordingly.
+  You can think of ga like a bumper or resistance:
+  "If demand exceeds the threshold, the line (threshold) creeps upward by 20% of the difference — and it moves downward similarly if demand drops."
+  
+- **Velocity-Scaled Linear Adjustment:**
+  
+  The model also includes a "velocity-scaled linear" adjustment, (the equation is: K * g_t/msct). where a constant k = 0.6, and g_t is the difference between the demand index, and the adaptive threshold. This value controls sensitivity:
+  
+  A smaller k helps reduce excessive fluctuations in the output percentage.
+  
+  
+  This is especially useful because a +1 point increase in demand is huge when the threshold is 0.8 (early stage), but minimal when the threshold is at 8 (in a mature market).
+  
+  
+  That’s why this particular approach — with scaling and damping — was chosen.
+
+The key ideas are:
+  - A weighted demand index that considers volume %, holder-growth, and velocity/churn.
+  - An adaptive threshold that reacts to demand shifts.
+  - A sensitivity scaling mechanism to keep changes stable as the market matures.
 
 ## Getting Started
 
