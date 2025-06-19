@@ -14,7 +14,7 @@ The Transcript Project is a decentralized, AI-based token governance platform. I
   - Can only adjust supply once per week (Saturday)
   - Integrates Chainlink price feeds for on-chain ETH/USD valuation
 
-- **Web Dashboard (STILL IN PROGRESS)**
+- **Web Dashboard (STILL IN PROGRESS):**
   - Flask-based frontend  
   - Displays token info, supply history, and project documentation  
   - Community call-to-action and funding links
@@ -90,6 +90,10 @@ The key ideas are:
   - A weighted demand index that considers volume %, holder-growth, and velocity/churn.
   - An adaptive threshold that reacts to demand shifts.
   - A sensitivity scaling mechanism to keep changes stable as the market matures.
+
+Once we've gotten through how the mathematics work. The project needs to fetch data points, that's where `token_ai_tracker/fetch_metrics.py` comes into play. The file get's to run everyday in order to fetch for the data, so that it can store it in a SQL database
+called `token_metrics.db`. Then when it comes Saturday (end of the Week). `tcript/ai_controller.py` gets ran in order to set a decision on whether to create/destroy or do nothing towards the total supply. Now, at the beginning. It is not going to start by minting
+the tokens. Almost 25% of the tokens when the contract gets deployed. It is gonna be sent towards the deployer (See the "Compile and deploy the smart contracts" section down below). And the rest is gonna be sent towards the AI wallet (which is 75%). So, once the backend is done finishing with the decision. that percent factor is gonna go towards the AI treasury wallet, and it is gonna determine how much to transfer depending if the percent is greater or less than 0. If it is 0, it will do nothing. 
 
 ## Getting Started
 
