@@ -119,7 +119,7 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
     A smaller k helps reduce excessive fluctuations in the output percentage.
     
     
-    This is especially useful because a +1 point increase in demand is huge when the threshold is 0.8 (early stage), but minimal when the threshold is at 8 (in a mature market).
+    This is especially useful because a +1 point increase in demand is huge when the threshold is 0.8 (early stage), but minimal when the threshold is at 8 (in a mature market). Also, there is a hard clip just to be sure that not a big percentage gets dumped into the equation. Such that it is called "pmax", it is set at a hard limit. If the percent (whether negative or positive), goes beyond that limit. It is gonna be set at +-5%. 
     
     
     That’s why this particular approach — with scaling and damping — was chosen.

@@ -14,6 +14,7 @@
 # - And finally, there will be a percent rule which takes gt and k which is set to be 0.6. and the calculation is gonna be f() = k * gt / msct where k is 0.6 and msct is whatever the value that comes out of the adaptive_threshold function.
 
 
+
 import sqlite3
 import os
 from dotenv import load_dotenv
@@ -31,7 +32,9 @@ DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 # Total supply of the token. This can be provided through an environment
 # variable so the functions can operate with the correct value without editing
 # the code.
-TOTAL_SUPPLY = 1000000
+circulating_supply = 100000 # Enter a demo value of the circulating supply
+if circulating_supply is None:
+    raise ValueError("Enter the circulating supply value.")
 
 # Path to persist the msct value between runs
 MSCT_STATE_PATH = os.path.join(REPO_ROOT, "msct_state.json")
@@ -54,7 +57,7 @@ def save_msct(path: str, value: float) -> None:
 # Dynamic msct loaded from persistent storage
 msct = load_msct(MSCT_STATE_PATH)
 
-def demand_index(db_path, total_supply):
+def demand_index(db_path, circulating_supply):
     """
     Calculate demand index D for the present week using the rules described.
     Returns: D, v_t, h_t, c_t, present/last week holders, threshold, heat gap, percent rule
@@ -64,29 +67,43 @@ def demand_index(db_path, total_supply):
 
     # Fetch present week sums
     cur.execute("""
-        SELECT SUM(volume), SUM(holder_count), SUM(unique_senders), SUM(active_wallets)
+        SELECT SUM(volume), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
         WHERE day BETWEEN date('now', '-6 days') AND date('now');
     """)
-    v_sum, h_sum, u_sum, a_sum = cur.fetchone()
+    v_sum, u_sum, a_sum = cur.fetchone()
     v_sum = float(v_sum or 0)
-    h_sum = int(h_sum or 0)
     u_sum = int(u_sum or 0)
     a_sum = int(a_sum or 0)
 
+    cur.execute("""
+        SELECT holder_count 
+        FROM daily_metrics
+        WHERE day = date('now')
+        LIMIT 1;
+    """)
+    h_this = cur.fetchone()
+    h_this = int(h_this[0]) if h_this else 0
+
     # Fetch last week holders sum
     cur.execute("""
-        SELECT SUM(holder_count)
+        SELECT holder_count
         FROM daily_metrics
-        WHERE day BETWEEN date('now', '-13 days') AND date('now', '-7 days'); 
+        WHERE day = date('now', '-7 days')
+        LIMIT 1; 
     """)
-    h_last = cur.fetchone()[0]
-    h_last = int(h_last or 1)  # avoid div by zero
+    h_prev = cur.fetchone()[0]
+    h_prev = int(h_prev or 1)  # avoid div by zero
 
-    # v_t: volume/total_supply*100
-    v_t = (v_sum / total_supply) * 100
+    # Skip if no activity:
+    if v_sum == 0 and h_this == 0 and h_prev == 0 and u_sum == 0 and a_sum == 0:
+        conn.close()
+        return 0
+
+    # v_t: volume/circulating_supply * 100
+    v_t = (v_sum / circulating_supply) * 100
     # h_t: (present holders - last week holders) / last week holders
-    h_t = (h_sum - h_last) / h_last if h_last else 0.0
+    h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
     # c_t: unique_senders / active_wallets
     c_t = (u_sum / a_sum) if a_sum else 0.0
 
@@ -110,12 +127,13 @@ def heat_gap(demand, threshold):
 
     return g_t
 
-def percent_rule(g_t, msct, k=0.6):
+def percent_rule(g_t, msct, k=0.6, pmax=0.05):
     """Percent rule calculation."""
-    return k * g_t / msct if msct else 0
+    raw = k * g_t / msct if msct else 0
+    return max(-pmax, min(raw, pmax)) 
 
 if __name__ == "__main__":
-    the_demand = demand_index(DB_PATH, TOTAL_SUPPLY)
+    the_demand = demand_index(DB_PATH, circulating_supply)
     msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, msct)
     threshold = msct

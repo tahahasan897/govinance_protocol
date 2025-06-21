@@ -17,7 +17,9 @@ load_dotenv(dotenv_path=ENV_PATH)
 # Config
 DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 RPC_URL = os.getenv("RPC_URL")
+DEPLOYER = os.getenv("DEPLOYER")
 WALLET_CONTRACT_ADDRESS = os.getenv("WALLET_CONTRACT_ADDRESS")
+TOKEN_CONTRACT_ADDRESS = os.getenv("TOKEN_CONTRACT_ADDRESS")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 MSCT_STATE_PATH = os.getenv("MSCT_STATE_PATH", os.path.join(REPO_ROOT, "msct_state.json"))
@@ -26,31 +28,42 @@ MSCT_STATE_PATH = os.getenv("MSCT_STATE_PATH", os.path.join(REPO_ROOT, "msct_sta
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 # Load ABI from necessities.env that leads to token_ai_tracker/abis/SmartAIWallet.json
-ABI_PATH = os.getenv("WALLET_ABI_FILE")
-with open(ABI_PATH) as f:
-    abi = json.load(f)
+WALLET_ABI_PATH = os.getenv("WALLET_ABI_FILE")
+TOKEN_ABI_PATH = os.getenv("TOKEN_ABI_FILE")
+with open(WALLET_ABI_PATH) as f:
+    wallet_abi = json.load(f)
+with open(TOKEN_ABI_PATH) as f:
+    token_abi = json.load(f)
 
-if not WALLET_CONTRACT_ADDRESS:
-    raise EnvironmentError("CONTRACT_ADDRESS is not set in environment")
+if not WALLET_CONTRACT_ADDRESS and not TOKEN_CONTRACT_ADDRESS:
+    raise EnvironmentError("CONTRACT_ADDRESSES is not set in environment")
 
-contract = web3.eth.contract(
+wallet_contract = web3.eth.contract(
     address=Web3.to_checksum_address(WALLET_CONTRACT_ADDRESS),
-    abi=abi,
+    abi=wallet_abi,
 )
 
-# Total supply of the token, can be set via environment variable
-fetching_total_supply = int(contract.functions.readSupply().call())
-total_supply = fetching_total_supply / 1e18
-if not total_supply:
-    raise ValueError("Total supply is zero. Please check the contract address or token state.")
-    
+token_contract = web3.eth.contract(
+    address=Web3.to_checksum_address(TOKEN_CONTRACT_ADDRESS),
+    abi=token_abi # ABI for the token contract
+)
+
+# Fetch the balance of AI wallet and the balance of the deployer from token contract
+balance_ai = token_contract.functions.balanceOf(WALLET_CONTRACT_ADDRESS).call()
+balance_deployer = token_contract.functions.balanceOf(DEPLOYER).call()
+total_supply = wallet_contract.functions.readSupply().call()
+if not balance_ai or not balance_deployer:
+    raise ValueError("Failed to fetch balances for AI wallet or deployer.")
+
+circulating = balance_deployer
+
 
 # AI Logic 
 def get_decision():
     """Return an integer supply adjustment decision based on functions folder calculation."""
     
     # Calculate demand index
-    the_demand = demand_index(DB_PATH, total_supply)
+    the_demand = demand_index(DB_PATH, circulating)
     msct = load_msct(MSCT_STATE_PATH) or 0.5
     new_msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, new_msct)
@@ -60,7 +73,7 @@ def get_decision():
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
-    txn = contract.functions.adjustSupply(percent).build_transaction(
+    txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
         {
             "chainId": 300,  # zkSync chain ID
             "gas": 200000,
@@ -87,6 +100,6 @@ if __name__ == "__main__":
 
     if fixed_point != 0:
         print("[ACTION] Sending transaction to adjust supply...")
-        # send_transaction(fixed_point)
+        send_transaction(fixed_point)
     else:
         print("[ACTION] No change — holding supply steady.")
