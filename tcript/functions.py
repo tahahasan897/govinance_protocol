@@ -29,13 +29,6 @@ load_dotenv(ENV_PATH)
 # Database path. Allow overriding via environment variable for flexibility.
 DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 
-# Total supply of the token. This can be provided through an environment
-# variable so the functions can operate with the correct value without editing
-# the code.
-circulating_supply = 100000 # Enter a demo value of the circulating supply
-if circulating_supply is None:
-    raise ValueError("Enter the circulating supply value.")
-
 # Path to persist the msct value between runs
 MSCT_STATE_PATH = os.path.join(REPO_ROOT, "msct_state.json")
 
@@ -133,6 +126,10 @@ def percent_rule(g_t, msct, k=0.6, pmax=0.05):
     return max(-pmax, min(raw, pmax)) 
 
 if __name__ == "__main__":
+    circulating_supply = None # Enter a demo value of the circulating supply
+    if circulating_supply is None:
+        raise ValueError("Enter the circulating supply value.")
+
     the_demand = demand_index(DB_PATH, circulating_supply)
     msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, msct)
