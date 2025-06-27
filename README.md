@@ -299,7 +299,7 @@ To fetch on-chain metrics and update the database, you have to first need to go 
   
   once you did the interactions, run:
   ```bash
-  python token_ai_tracker/fetch_metrics.py
+  python3 token_ai_tracker/fetch_metrics.py
   ```
   Once it gets ran, it'll print out:
   ```
@@ -316,7 +316,7 @@ To a number that is fairly close to the amount of blocks that are in the chain. 
 Once you fetched the data (Which is probably not enough for one day process), you'll have to get a generated data from a chatbot that consists of at least 2 weeks worth of dummy data. And test out the file.
 To run the AI backend logic (for supply adjustment proposals), run:
 ```bash
-python gbi/ai_controller.py
+python3 gbi/ai_controller.py
 ```
 And it will print out the decision, as well as sending the transaction towards the contract with the address of the transaction. 
 
@@ -332,7 +332,7 @@ Govinance_project/
 ├── token_ai_tracker/        # CSS and JS files
 ├── ...
 ├── app.py                   # application for running the web
-├── msct_state.json          # Saves the new msct value after running python gbi/ai_controller.py
+├── msct_state.json          # Saves the new msct value after running python3 gbi/ai_controller.py
 ├── necessities.env          # .env resources
 ├── ...
 ├── PriceConverter.sol       # Converts the value of ETH/USD
