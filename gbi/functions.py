@@ -14,7 +14,6 @@
 # - And finally, there will be a percent rule which takes gt and k which is set to be 0.6. and the calculation is gonna be f() = k * gt / msct where k is 0.6 and msct is whatever the value that comes out of the adaptive_threshold function.
 
 
-
 import sqlite3
 import os
 from dotenv import load_dotenv
@@ -51,10 +50,7 @@ def save_msct(path: str, value: float) -> None:
 msct = load_msct(MSCT_STATE_PATH)
 
 def demand_index(db_path, circulating_supply):
-    """
-    Calculate demand index D for the present week using the rules described.
-    Returns: D, v_t, h_t, c_t, present/last week holders, threshold, heat gap, percent rule
-    """
+    circulating_supply_tokens = circulating_supply / 1e18
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
@@ -72,7 +68,7 @@ def demand_index(db_path, circulating_supply):
     cur.execute("""
         SELECT holder_count 
         FROM daily_metrics
-        WHERE day = date('now')
+        ORDER BY day DESC
         LIMIT 1;
     """)
     h_this = cur.fetchone()
@@ -85,24 +81,20 @@ def demand_index(db_path, circulating_supply):
         WHERE day = date('now', '-7 days')
         LIMIT 1; 
     """)
-    h_prev = cur.fetchone()[0]
-    h_prev = int(h_prev or 1)  # avoid div by zero
+    row = cur.fetchone()
+    h_prev = int(row[0]) if row and row[0] is not None else 0
 
-    # Skip if no activity:
-    if v_sum == 0 and h_this == 0 and h_prev == 0 and u_sum == 0 and a_sum == 0:
+    # If no previous week or not enough volume, do not adjust
+    if h_prev == 0 or v_sum <= 125000.0:
         conn.close()
-        return 0
+        return None
 
-    # v_t: volume/circulating_supply * 100
-    v_t = (v_sum / circulating_supply) * 100
-    # h_t: (present holders - last week holders) / last week holders
+    v_t = (v_sum / circulating_supply_tokens) * 100
     h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
-    # c_t: unique_senders / active_wallets
     c_t = (u_sum / a_sum) if a_sum else 0.0
 
-    # Demand index D
     w_v, w_h, w_c = 0.5, 0.3, 0.2
-    demand = w_v * v_t + w_h * h_t + w_c * c_t
+    demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
     conn.close()
 
     return demand
@@ -122,8 +114,9 @@ def heat_gap(demand, threshold):
 
 def percent_rule(g_t, msct, k=0.6, pmax=0.05):
     """Percent rule calculation."""
-    raw = k * g_t / msct if msct else 0
-    return max(-pmax, min(raw, pmax)) 
+    # raw = k * g_t / msct if msct else 0
+    # return max(-pmax, min(raw, pmax))
+    return k * g_t / msct if msct else 0 
 
 if __name__ == "__main__":
     circulating_supply = None # Enter a demo value of the circulating supply

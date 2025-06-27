@@ -1,10 +1,10 @@
-# ΤΡΑΝΣΚΡΙΠΤ Project
+# Govinance Project
 
-The Transcript Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (TCRIPT) with a unique supply management mechanism based on a mathematical algorithm. Where an automated AI backend can propose and execute supply adjustments based on on-chain metrics (As well as off-chain metrics in the future). The project includes a Flask web dashboard for transparency and community engagement, a backend logic, both of the contracts, database, etc... 
+The Govinance Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (GBI) with a unique supply management mechanism based on a mathematical algorithm. Where an automated AI backend can propose and execute supply adjustments based on on-chain metrics (As well as off-chain metrics in the future). The project includes a Flask web dashboard for transparency and community engagement, a backend logic, both of the contracts, database, etc... 
 
 ## Features
 
-- **ERC-20 Token (TCRIPT):**  
+- **ERC-20 Token (GBI):**  
   - 1,000,000 initial supply  
   - 25% minted to deployer (liquidity), 75% to AI-controlled treasury  
   - AI can mint/burn tokens based on daily metrics that are being fetched.
@@ -24,9 +24,9 @@ The Transcript Project is a decentralized, AI-based token governance platform. I
 The purpose of this project is to set the data to be ready in order to train an AI model to start taking control over the governance policy. The project is yet experiemental, but it can set to go on it's own
 as a regular token for trading, staking, and so on. Let's go through the main folders/files, starting with the top and work our way down:
 
-- **`tcript`**:
+- **`gbi`**:
   - `ai_controller.py`:
-    This file, is an AI-driven supply controller for your TranscriptToken ecosystem. Here’s what it does:
+    This file, is an AI-driven supply controller for your GovinanceToken ecosystem. Here’s what it does:
 
     - Purpose:
     
@@ -134,13 +134,13 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
   - `abis`:
     Purpose: Stores contract ABI files in JSON format.
     What it does:
-    Contains the ABI definitions for your smart contracts (e.g., SmartAIWallet.json, Transcript.json).
+    Contains the ABI definitions for your smart contracts (e.g., SmartAIWallet.json, Govinance.json).
     These files are loaded by Python scripts and the backend to interact with contracts on-chain.
 
   - `fetch_metrics.py`:
     Purpose: Fetches and aggregates on-chain token activity.
     What it does:
-    Connects to the blockchain, fetches logs/events from the TranscriptToken contract.
+    Connects to the blockchain, fetches logs/events from the GovinanceToken contract.
     Aggregates daily metrics (volume, holders, senders, wallets, minted, burned, total supply).
     Writes these metrics to a SQLite database for analytics and AI use.
 
@@ -167,7 +167,7 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
   Purpose: Smart contract for AI-controlled treasury and supply management.
   What it does:
   Manages ownership, funding, and withdrawal.
-  Calls adjustSupply on the TranscriptToken contract based on AI decisions.
+  Calls adjustSupply on the GovinanceToken contract based on AI decisions.
   Restricts supply adjustment to once per week and only by the AI controller.
 
 - **`state.json`**:
@@ -183,9 +183,9 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
   Contains a table (likely daily_metrics) with columns such as day, volume, holder_count, unique_senders, active_wallets, minted, burned, and total_supply.
   Populated by fetch_metrics.py and used by your AI controller and analytics to track token activity, supply changes, and user engagement over time.
 
-- **`Transcript.sol`**:
+- **`Govinance.sol`**:
   Purpose:
-  Implements the main ERC-20 token contract for your project, called TranscriptToken (TCRIPT).
+  Implements the main ERC-20 token contract for your project, called GovinanceToken (GBI).
   What it does:
   Mints an initial supply (1,000,000 tokens), splitting 25% to the deployer and 75% to the AI-controlled treasury.
   Allows the AI controller (SmartAIWallet) to adjust supply up or down via the adjustSupply function, which can mint, burn, or release tokens from the treasury.
@@ -194,9 +194,9 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
   Enforces that only the AI controller can call supply adjustment functions.
 
 Once we've gotten through how the mathematics work. The project needs to fetch data points, that's where `token_ai_tracker/fetch_metrics.py` comes into play. The file get's to run everyday in order to fetch for the data, so that it can store it in a SQL database
-called `token_metrics.db`. Then when it comes Saturday (end of the Week). `tcript/ai_controller.py` gets ran in order to set a decision on whether to create/destroy or do nothing towards the total supply. Now, at the beginning. It is not going to start by minting
-the tokens. Once inititally, `Transcript.sol` gets deployed, 25% of the tokens is gonna be sent towards the deployer (See the "Compile and deploy the smart contracts" section down below). And the rest is gonna be sent towards the AI wallet (which is 75%). So, once the backend is done finishing with the decision. that percent factor is gonna go towards the AI treasury wallet, and it is gonna determine how much to transfer depending if the percent is greater or less than 0. If it is 0, it will do nothing. Now, that is gonna depend on 
-if there is enough tokens in the treasury. If not, there is such thing as "delta" (Checkout `Transcript.sol` to know more about the `adjustSupply()` function). And if delta is not 0, meaning that the percent that it should release. Then it will mint the rest to the treasury, and transfer half of that into the deployer's account. 
+called `token_metrics.db`. Then when it comes Saturday (end of the Week). `gbi/ai_controller.py` gets ran in order to set a decision on whether to create/destroy or do nothing towards the total supply. Now, at the beginning. It is not going to start by minting
+the tokens. Once inititally, `Govinance.sol` gets deployed, 25% of the tokens is gonna be sent towards the deployer (See the "Compile and deploy the smart contracts" section down below). And the rest is gonna be sent towards the AI wallet (which is 75%). So, once the backend is done finishing with the decision. that percent factor is gonna go towards the AI treasury wallet, and it is gonna determine how much to transfer depending if the percent is greater or less than 0. If it is 0, it will do nothing. Now, that is gonna depend on 
+if there is enough tokens in the treasury. If not, there is such thing as "delta" (Checkout `Govinance.sol` to know more about the `adjustSupply()` function). And if delta is not 0, meaning that the percent that it should release. Then it will mint the rest to the treasury, and transfer half of that into the deployer's account. 
 
 The matter of relying on the deployer to distribute the tokens into whether it be a liquidity, DEX, airdrop, rewards, etc. You would start to know that it is not considered to be a point of satisfaction. And in order for that to accomplish, it is gonna require something as a "distributor contract". That way, when the tokens gets to be taken out. It is gonna distribute to all of its people. But that is gonna be costy, and at the beginning. We gonna start to experiement the project, until it is gonna be gone on its own and be fully decentralized. 
 
@@ -218,13 +218,13 @@ The matter of relying on the deployer to distribute the tokens into whether it b
   ```
   But, if you want to run it once per week and only on Saturday. Uncomment the lines.
 
-   - Use your preferred Solidity tool (Hardhat, Foundry, Remix, etc.) for working with `Transcript.sol` and `SmartAIWallet.sol`.
+   - Use your preferred Solidity tool (Hardhat, Foundry, Remix, etc.) for working with `Govinance.sol` and `SmartAIWallet.sol`.
    - But for sanity purposes. It is a better for a quick practice to use remix and test out the functionality quicker. Here is a quick rundown on how it works:
      1. Create two MetaMask EOA accounts, one is for the deployer (msg.sender), and the other for the AI.
-     2. Put the two files into one file, you can name it whatever. But the preferred name is `TranscriptSystem.sol`.
-     3. Use injected web3 for MetaMask as the deployer. Then deploy `TranscriptToken` contract with the constructor as the addresses of both the deployer and the AI wallets.
-     4. Take the address of `TranscriptToken` contract, then switch to the other contract `SmartAIWallet` and fill out the constructor with the
-        `TranscriptToken` contract address, a price feed for that you can find in this link: [Chainlink](https://docs.chain.link/data-feeds/price-feeds/addresses?page=1&testnetPage=1).
+     2. Put the two files into one file, you can name it whatever. But the preferred name is `GovinanceSystem.sol`.
+     3. Use injected web3 for MetaMask as the deployer. Then deploy `GovinanceToken` contract with the constructor as the addresses of both the deployer and the AI wallets.
+     4. Take the address of `GovinanceToken` contract, then switch to the other contract `SmartAIWallet` and fill out the constructor with the
+        `GovinanceToken` contract address, a price feed for that you can find in this link: [Chainlink](https://docs.chain.link/data-feeds/price-feeds/addresses?page=1&testnetPage=1).
         And pick any testnet address. So far, It's been tested with only ETH/zkSync sepolia addresses. And the same for the address of the AI wallet.
      5. Take the address of the smartAIWallet contract. And find the "updateAIController" function, which will update the AI wallet to be no longer the
         funds are gonna sit in the AI's EOA. But in a "smart Wallet contract", which is what the name for it is as `SmartAIWallet`.
@@ -242,8 +242,8 @@ The matter of relying on the deployer to distribute the tokens into whether it b
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/tahahasan897/Transcript-Token.git
-   cd Transcript-Token
+   git clone https://github.com/tahahasan897/Govinance-Token.git
+   cd Govinance-Token
    ```
 
 2. **Install Python dependencies:**
@@ -271,7 +271,7 @@ The matter of relying on the deployer to distribute the tokens into whether it b
    WALLET_CONTRACT_ADDRESS=
    TOKEN_CONTRACT_ADDRESS=
     
-   TOKEN_ABI_FILE=token_ai_tracker/abis/Transcript.json
+   TOKEN_ABI_FILE=token_ai_tracker/abis/Govinance.json
    WALLET_ABI_FILE=token_ai_tracker/abis/SmartAIWallet.json
     
    DB_URL=sqlite:///token_metrics.db
@@ -316,23 +316,23 @@ To a number that is fairly close to the amount of blocks that are in the chain. 
 Once you fetched the data (Which is probably not enough for one day process), you'll have to get a generated data from a chatbot that consists of at least 2 weeks worth of dummy data. And test out the file.
 To run the AI backend logic (for supply adjustment proposals), run:
 ```bash
-python Tcript/ai_controller.py
+python gbi/ai_controller.py
 ```
 And it will print out the decision, as well as sending the transaction towards the contract with the address of the transaction. 
 
 ## Project Structure
 
 ```
-transcript_project/
+Govinance_project/
 │
 ├── node_modules             # Downloaded dependencies
 ├── static/                  # CSS and JS files
-├── tcript/                  # AI controller and logic
+├── gbi/                  # AI controller and logic
 ├── templates/               # Flask HTML templates
 ├── token_ai_tracker/        # CSS and JS files
 ├── ...
 ├── app.py                   # application for running the web
-├── msct_state.json          # Saves the new msct value after running python tcript/ai_controller.py
+├── msct_state.json          # Saves the new msct value after running python gbi/ai_controller.py
 ├── necessities.env          # .env resources
 ├── ...
 ├── PriceConverter.sol       # Converts the value of ETH/USD
@@ -341,7 +341,7 @@ transcript_project/
 ├── SmartAIWallet.sol        # Smart wallet contract
 ├── state.json               # Saves the latest block that has been explored into a new block to start reprocessing.
 ├── token_metrics.db         # SQL database
-└── Transcript.sol           # ERC20 token logic 
+└── Govinance.sol           # ERC20 token logic 
 ```
 
 ## How to Interact

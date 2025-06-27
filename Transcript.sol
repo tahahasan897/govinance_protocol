@@ -4,21 +4,21 @@ pragma solidity ^0.8.19;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
- * @title Transcript Token (TCRIPT)
+ * @title Govinance Token (GBI)
  * @dev • 25 % of the initial supply is minted to the deployer (for liquidity).
  *      • 75 % is minted to the AI-controlled treasury wallet.
  *      • No hard max-supply; the AI can mint/burn within the limits you set
  *        off-chain (e.g. per-call or per-time-window caps).
  */
-contract TranscriptToken is ERC20 {
+contract GovinanceToken is ERC20 {
     /*//////////////////////////////////////////////////////////////
                                STATE
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice one-time fixed mint on deployment (1 000 000 TCRIPT, 18 dec)
+    /// @notice one-time fixed mint on deployment (1 000 000 GBI, 18 dec)
     uint256 public constant INITIAL_SUPPLY = 1_000_000 * 1e18;
 
-    /// @notice 25 % of INITIAL_SUPPLY → 250 000 TCRIPT
+    /// @notice 25 % of INITIAL_SUPPLY → 250 000 GBI
     uint256 public constant CIRCULATING_CAP = INITIAL_SUPPLY / 4;
 
     /// @notice `factor` values are scaled by 1e18 (so 10% ⇒ 0.10*1e18 = 1e17)
@@ -53,7 +53,7 @@ contract TranscriptToken is ERC20 {
     /**
      * @param _aiController EOA or contract that will govern mint/burn.
      */
-    constructor(address _aiController, address _deployer) ERC20("Transcript", "TCRIPT") {
+    constructor(address _aiController, address _deployer) ERC20("Govinance", "GBI") {
         deployer = _deployer; 
         aiController = _aiController;
 
@@ -73,7 +73,7 @@ contract TranscriptToken is ERC20 {
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyAI() {
-        require(msg.sender == aiController, "TCRIPT: caller is not AI");
+        require(msg.sender == aiController, "GBI: caller is not AI");
         _;
     }
 
@@ -88,7 +88,7 @@ contract TranscriptToken is ERC20 {
      * @param factor as a non-fixed percent change (e.g. +10, −5, +0.053, -12.245, etc...). 0 does nothing.
      */
     function adjustSupply(int256 factor) external onlyAI {
-        require(factor != 0, "TCRIPT: percent is zero");
+        require(factor != 0, "GBI: percent is zero");
 
         uint256 current = totalSupply();
         uint256 absFactor = uint256(factor > 0 ? factor : -factor);
@@ -132,7 +132,7 @@ contract TranscriptToken is ERC20 {
             // Ensure treasury (AI wallet) holds enough to burn
             require(
                 balanceOf(aiController) >= delta,
-                "TCRIPT: AI balance < burn amount"
+                "GBI: AI balance < burn amount"
             );
 
             _burn(aiController, delta);

@@ -49,8 +49,13 @@ token_contract = web3.eth.contract(
 )
 
 # Fetch the balance of AI wallet and the balance of the deployer from token contract
-balance_ai = token_contract.functions.balanceOf(WALLET_CONTRACT_ADDRESS).call()
-balance_deployer = token_contract.functions.balanceOf(DEPLOYER).call()
+try:
+    balance_ai = token_contract.functions.balanceOf(WALLET_CONTRACT_ADDRESS).call()
+    balance_deployer = token_contract.functions.balanceOf(DEPLOYER).call()
+except Exception as e:
+    print(f"Error calling balanceOf on {token_contract} or {TOKEN_CONTRACT_ADDRESS}")
+    raise
+
 total_supply = wallet_contract.functions.readSupply().call()
 if not balance_ai or not balance_deployer:
     raise ValueError("Failed to fetch balances for AI wallet or deployer.")
@@ -64,6 +69,8 @@ def get_decision():
     
     # Calculate demand index
     the_demand = demand_index(DB_PATH, circulating)
+    if the_demand == None:
+        return 0
     msct = load_msct(MSCT_STATE_PATH) or 0.5
     new_msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, new_msct)

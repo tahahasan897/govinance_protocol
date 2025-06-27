@@ -7,7 +7,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <!-- TODO: Create a link for a favicon-->
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-        <title>TCRIPT: {% block title %} {% endblock %}</title>
+        <title>{% block title %}{% endblock %}</title>
     </head>
 
     <body>
@@ -15,9 +15,10 @@
         <div class="container nav-container">
             <!-- NAVBAR -->
             <header>
-                <a class="logo" href="/">ΤΡΑΝΣΚΡΙΠΤ</a>
+                <a class="logo" href="/">GOVINANCE</a>
                 <nav class="nav-links">
                     <a href="/whitepaper">Whitepaper</a>
+                    <a href="/interact">Interact</a>
                 </nav>
             </header>
         </div>
@@ -28,7 +29,8 @@
 
         <!-- FOOTER -->
         <footer class="container">
-            <div class="footer-logo">ΤΡΑΝΣΚΡΙΠΤ</div>
+            <div class="footer-logo">GOVINANCE</div>
+                <div style="margin-top: 6.2rem;">&copy; 2025 Govinance. All rights reserved.</div>
             <div class="footer-links">
                 <div>
                     <h4>Connect</h4>
@@ -39,7 +41,7 @@
                 <div>
                     <h4>Explore</h4>
                     <a href="#">Docs</a>
-                    <a href="#">FAQ</a>
+                    <a href="#">Repository</a>
                     <a href="#">Contact</a>
                 </div>
             </div>

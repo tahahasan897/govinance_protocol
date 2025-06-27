@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConverter.sol";
 
-interface ITranscriptToken {
+interface IGovinanceToken {
     function adjustSupply(int256 percent) external;
     function updateAIController(address newAI) external;
     function totalSupply() external view returns (uint256);
@@ -13,8 +13,8 @@ interface ITranscriptToken {
 
 contract SmartAIWallet {
 
-    // Address of the TranscriptToken contract
-    ITranscriptToken public immutable i_token;
+    // Address of the GovinanceToken contract
+    IGovinanceToken public immutable i_token;
 
     /// Minimum eth allowed to get into the account
     uint256 public constant MINIMUM_USD = 5e18; 
@@ -41,7 +41,7 @@ contract SmartAIWallet {
 
     constructor(address _token, address priceFeed, address _aiController) {
         require(_token != address(0), "SmartAIWallet: invalid token address");
-        i_token = ITranscriptToken(_token);
+        i_token = IGovinanceToken(_token);
         s_priceFeed = AggregatorV3Interface(priceFeed);
         aiController = _aiController; 
 
@@ -99,7 +99,7 @@ contract SmartAIWallet {
 
 
     /**
-     * @notice Call totalSupply() from TranscriptToken
+     * @notice Call totalSupply() from GovinanceToken
      */
     function readSupply() external view returns (uint256) {
         return i_token.totalSupply();
@@ -123,7 +123,7 @@ contract SmartAIWallet {
 
 
     /**
-     * @notice Rotate AI controller in the TranscriptToken contract.
+     * @notice Rotate AI controller in the GovinanceToken contract.
      */
     function updateAIController(address newAI) external onlyOwner {
         i_token.updateAIController(newAI);

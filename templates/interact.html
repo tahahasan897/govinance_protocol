@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+
+{% block title %}Contract Interaction{% endblock %}
+
+{% block main %}
+
+    <div class="container interact-page">
+
+        <!-- CONNECT ROW (full width, centered) -->
+        <label>Connect your wallet to interact with the Govinance contract.</label>
+        <div class="form-row connect-row">
+            <button id="connectButton">Connect</button>
+        </div>
+
+        <!-- APPROVE ROW -->
+        <label>Reach out to the deployer to approve your address to spend his GBI</label>
+        <label>tokens on your behalf.</label>
+        <div class="form-row">
+            <button id="ApproveButton">Approve</button>
+            <div class="inputs"> 
+                <input id="approveAmount" placeholder="Approve Amount" />
+                <input id="spenderAddress" placeholder="Spender Address" />
+            </div>
+        </div>
+
+        <!-- TRANSFER ROW -->
+         <label>Send GBI tokens directly to another wallet address.</label>
+        <div class="form-row">
+            <button id="transferButton">Transfer</button>
+            <div class="inputs">
+                <input id="recipientAddress" placeholder="Recipient Address" />
+                <input id="transferAmount" placeholder="Transfer Amount" />
+            </div>
+        </div>
+
+        <!-- TRANSFERFROM ROW -->
+         <label>Transfer tokens from one address to another (requires prior approval).</label>
+        <button id="TransferFromButton">TransferFrom</button>
+        <div class="inputs">
+            <input id="fromAddress" placeholder="From Address" />
+            <input id="transferToAddress" placeholder="To Address" />
+        </div>
+
+        <!-- VALUE AMOUNT ROW -->
+        <div class="form-row value-row">
+            <input id="ValueAmount" placeholder="Value Amount" />
+        </div>
+
+        <!-- ALLOWANCE ROW -->
+         <label>Check how many tokens a spender is allowed to use from the deployer's account.</label>
+        <div class="form-row">
+            <button id="AllowanceButton">Allowance</button>
+            <div class="inputs">
+                <input id="ownerAddress" placeholder="Owner Address" />
+                <input id="spenderAddress" placeholder="Spender Address" />
+            </div>
+        </div>
+
+        <label>Address will be received prior sending some GBI into your account</label>
+        <div class="form-row" style="justify-content: center;">
+            <button id="claimButton">Claim Free GBI</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='index-js.js') }}" type="module"></script>
+    
+{% endblock %}
