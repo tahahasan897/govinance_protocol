@@ -18,6 +18,7 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 import json 
+import sys
 
 # Load environment variables from the repository root so that this module works
 # regardless of where it's executed from.
@@ -82,10 +83,10 @@ def demand_index(db_path, circulating_supply):
         LIMIT 1; 
     """)
     row = cur.fetchone()
-    h_prev = int(row[0]) if row and row[0] is not None else 0
+    h_prev = int(row[0]) if row and row[0] is not None else None
 
     # If no previous week or not enough volume, do not adjust
-    if h_prev == 0 or v_sum <= 125000.0:
+    if v_sum <= 125000.0 or h_prev == None:
         conn.close()
         return None
 
@@ -119,11 +120,14 @@ def percent_rule(g_t, msct, k=0.6, pmax=0.05):
     return k * g_t / msct if msct else 0 
 
 if __name__ == "__main__":
-    circulating_supply = None # Enter a demo value of the circulating supply
+    circulating_supply = 100000 # Enter a demo value of the circulating supply
     if circulating_supply is None:
         raise ValueError("Enter the circulating supply value.")
 
     the_demand = demand_index(DB_PATH, circulating_supply)
+    if the_demand is None:
+        print("No change to supply")
+        sys.exit(1)
     msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, msct)
     threshold = msct

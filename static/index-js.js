@@ -5,32 +5,57 @@ import {
     custom,
     createPublicClient,
     parseEther,
-    formatEther
+    formatEther,
+    defineChain
 } from "https://esm.sh/viem";
 import { walletContractAddress, tokenContractAddress, walletABI, tokenABI } from "./constants-js.js";
 
 // manually define zkSync Sepolia
-const zksyncSepolia = {
-    id: 300,
-    name: "zkSync Sepolia Testnet",
-    network: "sepolia",
+// const zksyncSepolia = {
+//     id: 300,
+//     name: "zkSync Sepolia Testnet",
+//     network: "sepolia",
+//     rpcUrls: {
+//         default: {
+//             http: ["https://sepolia.era.zksync.dev"]
+//         }
+//     },
+//     nativeCurrency: {
+//         name: "Ether",
+//         symbol: "ETH",
+//         decimals: 18
+//     },
+//     blockExplorers: {
+//         default: {
+//             name: "zkSync Explorer",
+//             url: "https://sepolia.explorer.zksync.io"
+//         }
+//     }
+// };
+
+export const ethereumSepolia = defineChain({
+    id: 11155111,
+    name: "Ethereum Sepolia Testnet",
+    nativeCurrency: {
+        decimals: 18,
+        name: "Sepolia Ether",
+        symbol: "ETH",
+    },
     rpcUrls: {
         default: {
-            http: ["https://sepolia.era.zksync.dev"]
-        }
-    },
-    nativeCurrency: {
-        name: "Ether",
-        symbol: "ETH",
-        decimals: 18
+            http: ["https://sepolia.infura.io/v3/252587a9d1de461093cfad5e7ec5d2f5"],
+            webSocket: [],
+        },
     },
     blockExplorers: {
         default: {
-            name: "zkSync Explorer",
-            url: "https://sepolia.explorer.zksync.io"
+            name: "Etherscan",
+            url: "https://sepolia.etherscan.io"
         }
     }
-};
+});
+
+console.log("Loaded tokenABI:", tokenABI)
 
 const connectButton = document.getElementById("connectButton");
 const fundButton = document.getElementById("fundButton");
@@ -85,7 +110,7 @@ async function fund() {
         abi: walletABI,
         functionName: "fund",
         account,
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
         value: parseEther(ethAmount),
     });
 
@@ -108,7 +133,7 @@ async function withdraw() {
         abi: walletABI,
         functionName: "Withdraw", // must match exactly your ABI
         account,
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
     });
 
     const txHash = await walletClient.writeContract(request);
@@ -124,7 +149,7 @@ async function getBalance() {
     publicClient = createPublicClient({ transport: custom(window.ethereum) });
     const balance = await publicClient.getBalance({
         address: walletContractAddress,
-        chain: zksyncSepolia
+        chain: ethereumSepolia
     });
     console.log("Contract balance:", formatEther(balance), "ETH");
 }
@@ -156,7 +181,7 @@ async function approve() {
         functionName: "approve",
         args: [spender, parseEther(amount)],
         account,
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
     });
     const txHash = await walletClient.writeContract(request);
     console.log("Approve tx hash:", txHash);
@@ -176,7 +201,7 @@ async function transfer() {
         functionName: "transfer",
         args: [recipient, parseEther(amount)],
         account,
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
     });
     const txHash = await walletClient.writeContract(request);
     console.log("Transfer tx hash:", txHash);
@@ -197,7 +222,7 @@ async function transferFrom() {
         functionName: "transferFrom",
         args: [from, to, parseEther(value)],
         account,
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
     });
     const txHash = await walletClient.writeContract(request);
     console.log("TransferFrom tx hash:", txHash);
@@ -213,7 +238,7 @@ async function allowance() {
         abi: tokenABI,
         functionName: "allowance",
         args: [owner, spender],
-        chain: zksyncSepolia,
+        chain: ethereumSepolia,
     });
     alert(`Allowance: ${formatEther(result)} tokens`);
 }

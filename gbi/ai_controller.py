@@ -82,7 +82,7 @@ def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
     txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
         {
-            "chainId": 300,  # zkSync chain ID
+            "chainId": 11155111,  # zkSync chain ID
             "gas": 200000,
             "gasPrice": web3.to_wei("20", "gwei"),
             "nonce": nonce,

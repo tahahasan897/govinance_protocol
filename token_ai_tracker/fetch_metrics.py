@@ -27,9 +27,12 @@ STATE_PATH              = SCRIPT_DIR / 'state.json'
 if not all([RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_FILE, WALLET_ABI_FILE]):
     raise SystemExit('RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_FILE, WALLET_ABI_FILE must be set in .env')
 
+# ─────── Connect to web3 & contracts ───────
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+
 # ─────── Constants ───────
 # zkSync closest block to start from there (It needs to be adjusted in the future runtime). 
-START_DEPLOY_BLOCK = 5_352_897
+START_DEPLOY_BLOCK = (w3.eth.block_number) - 50
 
 # ─────── Load last processed block ───────
 def load_last_block(path: Path) -> int:
@@ -42,9 +45,6 @@ def load_last_block(path: Path) -> int:
 def save_last_block(path: Path, block: int) -> None:
     with path.open('w') as f:
         json.dump({'last_block': block}, f)
-
-# ─────── Connect to web3 & contracts ───────
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 with open(TOKEN_ABI_FILE) as f:
     token_abi = json.load(f)
