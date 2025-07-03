@@ -24,9 +24,6 @@ contract GovinanceToken is ERC20 {
     /// @notice `factor` values are scaled by 1e18 (so 10% ⇒ 0.10*1e18 = 1e17)
     uint256 private constant SCALE = 1e18; 
 
-    /// @notice the AI gets updated for the smart-wallet-contract once
-    bool private s_updatedAi = true; // Retained, will need careful management with `initialize`
-
     /// @notice how many tokens have moved from treasury → circulation so far
     uint256 public totalReleased;
 
