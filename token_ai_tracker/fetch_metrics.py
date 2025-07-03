@@ -193,14 +193,14 @@ else:
 # ─────── Write to SQLite ───────
 engine = create_engine(DB_PATH)
 with engine.begin() as conn:
-    for day in sorted(set(list(daily_volume.keys()) + list(daily_minted.keys()) + list(daily_burned.keys()))):
+    for day in day_list:
         # get supply snapshot from your SmartAIWallet
         raw_supply = wallet_contract.functions.readSupply().call()
         supply = raw_supply / 1e18
 
-        holders = holders_by_day[day]
-        senders = senders_by_day[day]
-        wallets = wallets_by_day[day]
+        holders = holders_by_day.get(day, set())
+        senders = senders_by_day.get(day, set())
+        wallets = wallets_by_day.get(day, set())
 
         conn.execute(
             text("""
