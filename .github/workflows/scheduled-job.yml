@@ -20,4 +20,13 @@ jobs:
           pip install -r requirements.txt
           pip install -r token_ai_tracker/requirements.txt
       - name: Run script
+        env:
+          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
+          DEPLOYER: ${{ secrets.DEPLOYER }}
+          RPC_URL: ${{ secrets.RPC_URL }}
+          TOKEN_CONTRACT_ADDRESS: ${{ secrets.TOKEN_CONTRACT_ADDRESS }}
+          WALLET_CONTRACT_ADDRESS: ${{ secrets.WALLET_CONTRACT_ADDRESS }}
+          TOKEN_ABI_FILE: ${{ secrets.TOKEN_ABI_FILE }}
+          WALLET_ABI_FILE: ${{ secrets.WALLET_ABI_FILE }}
+          DB_URL: ${{ secrets.DB_URL }}
         run: python token_ai_tracker/fetch_metrics.py
