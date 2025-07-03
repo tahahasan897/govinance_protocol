@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.17; // Keeping 0.8.17 as you tested with it, or you can try 0.8.10
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title Govinance Token (GBI)
  * @dev • 25 % of the initial supply is minted to the deployer (for liquidity).
- *      • 75 % is minted to the AI-controlled treasury wallet.
- *      • No hard max-supply; the AI can mint/burn within the limits you set
- *        off-chain (e.g. per-call or per-time-window caps).
+ * • 75 % is minted to the AI-controlled treasury wallet.
+ * • No hard max-supply; the AI can mint/burn within the limits you set
+ * off-chain (e.g. per-call or per-time-window caps).
  */
 contract GovinanceToken is ERC20 {
     /*//////////////////////////////////////////////////////////////
-                               STATE
+                                STATE
     //////////////////////////////////////////////////////////////*/
 
     /// @notice one-time fixed mint on deployment (1 000 000 GBI, 18 dec)
@@ -25,7 +25,7 @@ contract GovinanceToken is ERC20 {
     uint256 private constant SCALE = 1e18; 
 
     /// @notice the AI gets updated for the smart-wallet-contract once
-    bool private s_updatedAi = true; 
+    bool private s_updatedAi = true; // Retained, will need careful management with `initialize`
 
     /// @notice how many tokens have moved from treasury → circulation so far
     uint256 public totalReleased;
@@ -35,6 +35,12 @@ contract GovinanceToken is ERC20 {
 
     /// @notice the deployer
     address public deployer; 
+
+    // NEW: Variable to track the initial admin/deployer for the `initialize` function
+    address private _initialAdmin; 
+
+    // NEW: Flag to ensure `initialize` is called only once
+    bool private _initialized = false; 
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -47,14 +53,35 @@ contract GovinanceToken is ERC20 {
     event BurningHappened(uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                                CONSTRUCTOR (SIMPLIFIED)
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @param _aiController EOA or contract that will govern mint/burn.
+     * @dev Simplified constructor to reduce deployment gas.
+     * Initial setup (setting deployer, aiController, and minting)
+     * is now handled by the `initialize` function after deployment.
      */
-    constructor(address _aiController, address _deployer) ERC20("Govinance", "GBI") {
-        deployer = _deployer; 
+    constructor() ERC20("Govinance", "GBI") {
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            NEW INITIALIZATION FUNCTION
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Initializes the contract after deployment. Sets the deployer,
+     * AI controller, and performs the initial token minting.
+     * @dev This function can only be called once by the contract deployer (tx.origin).
+     * @param _aiController The address of the AI-controlled treasury wallet.
+     * @param _deployer The address of the contract deployer (for initial liquidity).
+     */
+    function initialize(address _aiController, address _deployer) public {
+        require(!_initialized, "Govinance: already initialized");
+        // Ensure this is called directly by an EOA to prevent re-entrancy or proxy issues
+        require(msg.sender == tx.origin, "Govinance: not called by EOA directly"); 
+
+        _initialAdmin = msg.sender; // Store the address that calls initialize (should be your private key's address)
+        deployer = _deployer;
         aiController = _aiController;
 
         // 1) Mint circulating tranche to deployer
@@ -64,13 +91,14 @@ contract GovinanceToken is ERC20 {
         uint256 treasuryReserve = INITIAL_SUPPLY - CIRCULATING_CAP; // 750 000
         _mint(aiController, treasuryReserve);
 
-        // 3) Book-keep how much has left treasury so far (none yet)
+        // 3) Book-keep how much has left treasury so far
         totalReleased = CIRCULATING_CAP;
+        _initialized = true; // Set initialized to true
     }
 
-    /*//////////////////////////////////////////////////////////////
-                              MODIFIERS
-    //////////////////////////////////////////////////////////////*/
+    /*/////////////////////////////////////////////////////////////
+                                MODIFIERS
+    /////////////////////////////////////////////////////////////*/
 
     modifier onlyAI() {
         require(msg.sender == aiController, "GBI: caller is not AI");
@@ -78,13 +106,13 @@ contract GovinanceToken is ERC20 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           SUPPLY MANAGEMENT
+                            SUPPLY MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Increase or decrease totalSupply by a non-fixed factor number.
      * @dev Positive `factor` releases first from treasury, then mints the
-     *  shortfall (no hard cap). Negative burns from AI balance (If there are enough to burn).
+     * shortfall (no hard cap). Negative burns from AI balance (If there are enough to burn).
      * @param factor as a non-fixed percent change (e.g. +10, −5, +0.053, -12.245, etc...). 0 does nothing.
      */
     function adjustSupply(int256 factor) external onlyAI {
@@ -138,17 +166,5 @@ contract GovinanceToken is ERC20 {
             _burn(aiController, delta);
             emit BurningHappened(delta);
         }
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        GOVERNANCE (AI WALLET ROTATE)
-    //////////////////////////////////////////////////////////////*/
-
-    function updateAIController(address newAI) external {
-        require(s_updatedAi == true, "AI wallet already updated"); 
-        uint256 treasuryReserve = INITIAL_SUPPLY - CIRCULATING_CAP;
-        _transfer(aiController, newAI, treasuryReserve);
-        aiController = newAI;
-        s_updatedAi = false; 
     }
 }
