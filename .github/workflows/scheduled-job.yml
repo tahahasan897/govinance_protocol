@@ -21,7 +21,7 @@ jobs:
           pip install -r token_ai_tracker/requirements.txt
       - name: Run script
         env:
-          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
+          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }} # Ensure this secret is set in your repository settings
           DEPLOYER: ${{ secrets.DEPLOYER }}
           RPC_URL: ${{ secrets.RPC_URL }}
           TOKEN_CONTRACT_ADDRESS: ${{ secrets.TOKEN_CONTRACT_ADDRESS }}

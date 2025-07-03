@@ -2,7 +2,7 @@ import json
 import os
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -172,6 +172,23 @@ while block <= latest_block:
 
     raw_log_count += len(logs)
     block = to_block + 1
+
+# ─────── Ensure every day in range is present ───────
+# Find the earliest and latest day in the block range
+all_days = set(list(daily_volume.keys()) + list(daily_minted.keys()) + list(daily_burned.keys()))
+if all_days:
+    min_day = min(all_days)
+    max_day = max(all_days)
+    d = datetime.strptime(min_day, "%Y-%m-%d")
+    end = datetime.strptime(max_day, "%Y-%m-%d")
+    day_list = []
+    while d <= end:
+        day_list.append(d.strftime("%Y-%m-%d"))
+        d += timedelta(days=1)
+else:
+    # If there are no logs at all, just use today's date
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    day_list = [today]
 
 # ─────── Write to SQLite ───────
 engine = create_engine(DB_PATH)
