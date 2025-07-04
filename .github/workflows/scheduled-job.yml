@@ -30,3 +30,10 @@ jobs:
           WALLET_ABI_FILE: ${{ secrets.WALLET_ABI_FILE }}
           DB_URL: ${{ secrets.DB_URL }}
         run: python token_ai_tracker/fetch_metrics.py
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-files
+          path: |
+            token_ai_tracker/token_metrics.db
+            token_ai_tracker/state.json
