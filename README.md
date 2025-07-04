@@ -77,15 +77,12 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
     
     Where:
     
-    v_t, h_t, and c_t are the weekly-summed values for volume %, holder-growth, and velocity/churn. Each calculated using       their own formulas.
+    v_t, h_t, and c_t are the weekly-summed values for volume %, holder-growth, and velocity/churn. Each calculated using their own formulas.
     
     w_v, w_h, and w_c are the weights that determine the importance of each factor.
     
     
-  Currently, the volume weight w_v is set highest at 0.5, because volume is generally considered the most important metric. However, this can be adjusted depending on the goal. A more balanced setup might be:
-    - w_v = 0.4
-    - w_h = 0.4
-    - w_c = 0.2
+  Currently, the volume weight w_v, and the holder count weight is set highest at 0.4, because volume and holder count is generally considered the most important metric and the most focused on towards a higher value. However, this can be adjusted depending on the goal.
     
   Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
     
