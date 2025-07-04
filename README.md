@@ -1,5 +1,5 @@
 # Govinance Project
-(images/logoAndName.png)
+![Govinance](images/logoAndName.png)
 
 The Govinance Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (GBI) with a unique supply management mechanism based on a mathematical algorithm. Where an automated AI backend can propose and execute supply adjustments based on on-chain metrics (As well as off-chain metrics in the future). The project includes a Flask web dashboard for transparency and community engagement, a backend logic, both of the contracts, database, etc... 
 
