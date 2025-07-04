@@ -7,7 +7,6 @@ import {PriceConverter} from "./PriceConverter.sol";
 
 interface IGovinanceToken {
     function adjustSupply(int256 percent) external;
-    function updateAIController(address newAI) external;
     function totalSupply() external view returns (uint256);
 }
 
@@ -119,14 +118,6 @@ contract SmartAIWallet {
 
         i_token.adjustSupply(percent);
         emit SupplyAdjusted(percent, block.timestamp, msg.sender);
-    }
-
-
-    /**
-     * @notice Rotate AI controller in the GovinanceToken contract.
-     */
-    function updateAIController(address newAI) external onlyOwner {
-        i_token.updateAIController(newAI);
     }
 
     /// @notice Funds our contract based on the ETH/USD price.

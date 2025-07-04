@@ -59,7 +59,7 @@ def demand_index(db_path, circulating_supply):
     cur.execute("""
         SELECT SUM(volume), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
-        WHERE day BETWEEN date('now', '-6 days') AND date('now');
+        WHERE day BETWEEN date('now', '-7 days') AND date('now');
     """)
     v_sum, u_sum, a_sum = cur.fetchone()
     v_sum = float(v_sum or 0)
@@ -86,7 +86,13 @@ def demand_index(db_path, circulating_supply):
     h_prev = int(row[0]) if row and row[0] is not None else None
 
     # If no previous week or not enough volume, do not adjust
-    if v_sum <= 125000.0 or h_prev == None:
+    cur.execute("""
+        SELECT SUM(volume)
+        FROM daily_metrics; 
+    """)
+    row2 = cur.fetchone()
+    the_volume = float(row2[0]) if row2 and row2[0] is not None else 0.0
+    if the_volume < 125000.0 or h_prev == None:
         conn.close()
         return None
 
@@ -94,7 +100,7 @@ def demand_index(db_path, circulating_supply):
     h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
     c_t = (u_sum / a_sum) if a_sum else 0.0
 
-    w_v, w_h, w_c = 0.5, 0.3, 0.2
+    w_v, w_h, w_c = 0.4, 0.4, 0.2
     demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
     conn.close()
 
@@ -120,9 +126,9 @@ def percent_rule(g_t, msct, k=0.6, pmax=0.05):
     return k * g_t / msct if msct else 0 
 
 if __name__ == "__main__":
-    circulating_supply = 100000 # Enter a demo value of the circulating supply
+    circulating_supply = None # Enter a demo value of the circulating supply
     if circulating_supply is None:
-        raise ValueError("Enter the circulating supply value.")
+        raise ValueError("Enter the circulating supply value (Check gbi/functions.py at the initializer).")
 
     the_demand = demand_index(DB_PATH, circulating_supply)
     if the_demand is None:
