@@ -36,4 +36,4 @@ jobs:
           name: output-files
           path: |
             token_ai_tracker/token_metrics.db
-            token_ai_tracker/state.json
+            state.json
