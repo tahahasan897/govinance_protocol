@@ -1,4 +1,5 @@
 # Govinance Project
+![Govinance](images/logo.png)
 
 The Govinance Project is a decentralized, AI-based token governance platform. It features an ERC-20 token (GBI) with a unique supply management mechanism based on a mathematical algorithm. Where an automated AI backend can propose and execute supply adjustments based on on-chain metrics (As well as off-chain metrics in the future). The project includes a Flask web dashboard for transparency and community engagement, a backend logic, both of the contracts, database, etc... 
 
@@ -77,15 +78,12 @@ So, how can it determine whether to mint/burn or doesn't do any change? Well, yo
     
     Where:
     
-    v_t, h_t, and c_t are the weekly-summed values for volume %, holder-growth, and velocity/churn. Each calculated using       their own formulas.
+    v_t, h_t, and c_t are the weekly-summed values for volume %, holder-growth, and velocity/churn. Each calculated using their own formulas.
     
     w_v, w_h, and w_c are the weights that determine the importance of each factor.
     
     
-  Currently, the volume weight w_v is set highest at 0.5, because volume is generally considered the most important metric. However, this can be adjusted depending on the goal. A more balanced setup might be:
-    - w_v = 0.4
-    - w_h = 0.4
-    - w_c = 0.2
+  Currently, the volume weight w_v, and the holder count weight is set highest at 0.4, because volume and holder count is generally considered the most important metric and the most focused on towards a higher value. However, this can be adjusted depending on the goal.
     
   Understanding what each variable represents — and what outcome we're aiming for — is crucial when adjusting these weights.
     
@@ -251,9 +249,11 @@ The matter of relying on the deployer to distribute the tokens into whether it b
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
+   cd token_ai_tracker
+   pip install -r requirements.txt
    ```
 
-3. **Install Solidity dependencies:**
+3. **Install Solidity dependencies (OPTIONAL):**
    ```bash
    npm install
    npm install @openzeppelin/contracts @chainlink/contracts
@@ -305,11 +305,7 @@ To fetch on-chain metrics and update the database, you have to first need to go 
   ```
   🔄 Processing blocks ... → ...
   ```
-  This will go through the blocks and process which of these blocks obtain the event logs. If you are in case, trying to run a different chain. Checkout how many blocks are in the chain. And change this line of code:
-```bash
-START_DEPLOY_BLOCK = 
-```
-To a number that is fairly close to the amount of blocks that are in the chain. So the process can be done faster. And you won't have to process through unnecessary blocks in the past. 
+  This will go through the blocks and process which of these blocks obtain the event logs.
 
 ### AI Controller
 
