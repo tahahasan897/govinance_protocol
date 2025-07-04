@@ -119,7 +119,7 @@ def heat_gap(demand, threshold):
 
     return g_t
 
-def percent_rule(g_t, msct, k=0.6, pmax=0.05):
+def percent_rule(g_t, msct, k=0.6):
     """Percent rule calculation."""
     # raw = k * g_t / msct if msct else 0
     # return max(-pmax, min(raw, pmax))
