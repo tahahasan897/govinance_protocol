@@ -1,7 +1,6 @@
 <p align="center">
+  <h1>Govinance Project<h1/>
   <img src="images/logoAndName.png" alt="Govinance" width="300"/>
-  <br/>
-  <strong>Govinance Project</strong>
 </p>
 
 
