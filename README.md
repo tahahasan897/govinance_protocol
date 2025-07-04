@@ -1,7 +1,7 @@
 <h1 align="center">Govinance Project</h1>
 
 <p align="center">
-  <img src="images/logoAndName.png" alt="Govinance" width="300"/>
+  <img src="images/logo2.png" alt="Govinance" width="300"/>
 </p>
 
 
