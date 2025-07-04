@@ -248,9 +248,11 @@ The matter of relying on the deployer to distribute the tokens into whether it b
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
+   cd token_ai_tracker
+   pip install -r requirements.txt
    ```
 
-3. **Install Solidity dependencies:**
+3. **Install Solidity dependencies (OPTIONAL):**
    ```bash
    npm install
    npm install @openzeppelin/contracts @chainlink/contracts
@@ -302,11 +304,7 @@ To fetch on-chain metrics and update the database, you have to first need to go 
   ```
   🔄 Processing blocks ... → ...
   ```
-  This will go through the blocks and process which of these blocks obtain the event logs. If you are in case, trying to run a different chain. Checkout how many blocks are in the chain. And change this line of code:
-```bash
-START_DEPLOY_BLOCK = 
-```
-To a number that is fairly close to the amount of blocks that are in the chain. So the process can be done faster. And you won't have to process through unnecessary blocks in the past. 
+  This will go through the blocks and process which of these blocks obtain the event logs.
 
 ### AI Controller
 
