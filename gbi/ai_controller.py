@@ -23,6 +23,7 @@ TOKEN_CONTRACT_ADDRESS = os.getenv("TOKEN_CONTRACT_ADDRESS")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 MSCT_STATE_PATH = os.getenv("MSCT_STATE_PATH", os.path.join(REPO_ROOT, "msct_state.json"))
+BEGINNING_STATE_PATH = os.path.join(REPO_ROOT, "beginning_state.json")
 
 # Connect
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
@@ -62,11 +63,27 @@ if not balance_ai or not balance_deployer:
 
 circulating = balance_deployer
 
+def load_beginning_state(path: str, default: bool = False) -> bool:
+    """Load the saved beginning state from path or return default."""
+    try:
+        with open(path) as f:
+            data = json.load(f)
+            return bool(data.get("beginning", default))
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
+        return default
+
+def save_beginning_state(path: str, value: bool) -> None:
+    """Persist beginning state to path in JSON format."""
+    with open(path, "w") as f:
+        json.dump({"beginning": value}, f)
 
 # AI Logic 
 def get_decision():
     """Return an integer supply adjustment decision based on functions folder calculation."""
     
+
+    beginning = load_beginning_state(BEGINNING_STATE_PATH)
+
     # Calculate demand index
     the_demand = demand_index(DB_PATH, circulating)
     if the_demand == None:
@@ -74,20 +91,29 @@ def get_decision():
     msct = load_msct(MSCT_STATE_PATH) or 0.5
     new_msct = adaptive_threshold(the_demand, msct)
     save_msct(MSCT_STATE_PATH, new_msct)
-    percent = percent_rule(heat_gap(the_demand, new_msct), new_msct)
+    # If the msct at the beginning is default, use the new_msct 
+    if not beginning:
+        percent = percent_rule(heat_gap(the_demand, new_msct), new_msct)
+        save_beginning_state(BEGINNING_STATE_PATH, True)
+    else:
+        percent = percent_rule(heat_gap(the_demand, msct), msct)
 
     return percent
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
-    txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
-        {
-            "chainId": 11155111,  # zkSync chain ID
-            "gas": 200000,
-            "gasPrice": web3.to_wei("20", "gwei"),
-            "nonce": nonce,
-        }
-    )
+    try:
+        txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
+            {
+                "chainId": None, # Use the chain ID of the network you're connected to
+                "gas": 200000,
+                "gasPrice": web3.to_wei("20", "gwei"),
+                "nonce": nonce,
+            }
+        )
+    except Exception as e:
+        print(f"Enter the chain ID of the network you're connected to in the environment variable RPC_URL. Error: {e}")
+        return
 
     signed_txn = web3.eth.account.sign_transaction(txn, private_key=PRIVATE_KEY)
     tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)

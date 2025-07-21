@@ -50,19 +50,23 @@ def save_msct(path: str, value: float) -> None:
 # Dynamic msct loaded from persistent storage
 msct = load_msct(MSCT_STATE_PATH)
 
+
 def demand_index(db_path, circulating_supply):
+    """Calculate the demand index based on the present week's metrics."""
+
     circulating_supply_tokens = circulating_supply / 1e18
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
     # Fetch present week sums
     cur.execute("""
-        SELECT SUM(volume), SUM(unique_senders), SUM(active_wallets)
+        SELECT SUM(volume), SUM(user_to_circ), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
-        WHERE day BETWEEN date('now', '-7 days') AND date('now');
+        WHERE day BETWEEN date('now', '-6 days', 'localtime') AND date('now', 'localtime');
     """)
-    v_sum, u_sum, a_sum = cur.fetchone()
+    v_sum, uc_sum, u_sum, a_sum = cur.fetchone()
     v_sum = float(v_sum or 0)
+    uc_sum = float(uc_sum or 0)
     u_sum = int(u_sum or 0)
     a_sum = int(a_sum or 0)
 
@@ -79,34 +83,36 @@ def demand_index(db_path, circulating_supply):
     cur.execute("""
         SELECT holder_count
         FROM daily_metrics
-        WHERE day = date('now', '-7 days')
+        WHERE day = date('now', '-6 days', 'localtime')
         LIMIT 1; 
     """)
     row = cur.fetchone()
-    h_prev = int(row[0]) if row and row[0] is not None else None
+    h_prev = int(row[0]) if row and row[0] is not None else 0
 
-    # If no previous week or not enough volume, do not adjust
     cur.execute("""
-        SELECT SUM(volume)
-        FROM daily_metrics; 
+        SELECT SUM(volume) 
+        FROM daily_metrics
     """)
-    row2 = cur.fetchone()
-    the_volume = float(row2[0]) if row2 and row2[0] is not None else 0.0
-    if the_volume < 125000.0 or h_prev == None:
+    total_volume = cur.fetchone()
+    total_volume = float(total_volume[0]) if total_volume and total_volume[0] is not None else 0.0
+
+    if uc_sum > 0:
+        v_sum = v_sum - uc_sum
+    
+    if total_volume >= 50000.0:
+        v_t = (v_sum / circulating_supply_tokens) * 100
+        h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
+        c_t = (u_sum / a_sum) if a_sum else 0.0
+
+        w_v, w_h, w_c = 0.3, 0.5, 0.2
+        demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
+        conn.close()
+        return demand
+    else:
         conn.close()
         return None
 
-    v_t = (v_sum / circulating_supply_tokens) * 100
-    h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
-    c_t = (u_sum / a_sum) if a_sum else 0.0
-
-    w_v, w_h, w_c = 0.4, 0.4, 0.2
-    demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
-    conn.close()
-
-    return demand
-
-def adaptive_threshold(demand, msct, ga=0.2):
+def adaptive_threshold(demand, msct, ga=0.15):
     """Adaptive threshold calculation. The value that gets returned is the new msct."""
     new_value = msct * (1 + ga * (demand - msct))
     msct = new_value
@@ -119,11 +125,12 @@ def heat_gap(demand, threshold):
 
     return g_t
 
-def percent_rule(g_t, msct, k=0.6):
+def percent_rule(g_t, msct, k=0.5, contraction_bias=1.2):
     """Percent rule calculation."""
-    # raw = k * g_t / msct if msct else 0
-    # return max(-pmax, min(raw, pmax))
-    return k * g_t / msct if msct else 0 
+    if g_t < 0:
+        return k * (g_t / msct) * contraction_bias / 10 if msct else 0
+    else:
+        return k * (g_t / msct) / 10 if msct else 0
 
 if __name__ == "__main__":
     circulating_supply = None # Enter a demo value of the circulating supply

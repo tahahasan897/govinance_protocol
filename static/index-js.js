@@ -9,6 +9,7 @@ import {
     defineChain
 } from "https://esm.sh/viem";
 import { walletContractAddress, tokenContractAddress, walletABI, tokenABI } from "./constants-js.js";
+import { ethers } from "https://esm.sh/ethers@6.8.1";
 
 // manually define zkSync Sepolia
 // const zksyncSepolia = {
@@ -55,7 +56,10 @@ export const ethereumSepolia = defineChain({
     }
 });
 
-console.log("Loaded tokenABI:", tokenABI)
+const password = "your_secure_password"; // replace with your actual password
+const hash = ethers.keccak256(ethers.toUtf8Bytes(password));
+console.log("Password hash:", hash);
+
 
 const connectButton = document.getElementById("connectButton");
 const fundButton = document.getElementById("fundButton");
@@ -154,7 +158,7 @@ async function getBalance() {
     console.log("Contract balance:", formatEther(balance), "ETH");
 }
 
-async function claim () {
+async function claim() {
     if (!window.ethereum) return alert("Connect wallet first!")
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
     const address = accounts[0]
@@ -254,4 +258,5 @@ if (approveButton) approveButton.onclick = approve;
 if (transferButton) transferButton.onclick = transfer;
 if (transferButton) transferFromButton.onclick = transferFrom;
 if (allowanceButton) allowanceButton.onclick = allowance;
-  
+
+

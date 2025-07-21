@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import sys
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -16,7 +17,6 @@ load_dotenv(SCRIPT_DIR / 'necessities.env')
 
 DEPLOYER                = os.getenv('DEPLOYER')
 RPC_URL                 = os.getenv('RPC_URL')
-WALLET_ADDRESS          = os.getenv('WALLET_ADDRESS')
 TOKEN_CONTRACT_ADDRESS  = os.getenv('TOKEN_CONTRACT_ADDRESS')
 WALLET_CONTRACT_ADDRESS = os.getenv('WALLET_CONTRACT_ADDRESS')
 TOKEN_ABI_FILE          = os.getenv('TOKEN_ABI_FILE')
@@ -79,12 +79,19 @@ if start_block > latest_block:
 print(f'🔄 Processing blocks {start_block:,} → {latest_block:,} …')
 
 # ─────── Aggregation containers ───────
-daily_volume     = defaultdict(float)
-holders_by_day   = defaultdict(set)
-senders_by_day   = defaultdict(set)
-wallets_by_day   = defaultdict(set)
-daily_minted     = defaultdict(float)
-daily_burned     = defaultdict(float)
+daily_volume           = defaultdict(float)  # day -> total volume
+daily_deployer_to_user = defaultdict(float)
+daily_user_to_user     = defaultdict(float) 
+daily_user_to_deployer = defaultdict(float)
+
+senders_by_day         = defaultdict(set)
+wallets_by_day         = defaultdict(set)
+daily_minted           = defaultdict(float)
+daily_burned           = defaultdict(float)
+
+# Track balances for true holder count
+balances_by_address    = defaultdict(float)  # address -> balance
+true_holders_by_day    = defaultdict(set)    # day -> set(addresses with balance > 0)
 
 span  = 1_000
 block = start_block
@@ -120,8 +127,6 @@ while block <= latest_block:
                 continue
             raise
 
-    ai_funding_skipped = False
-
     for raw in logs:
         topic = raw['topics'][0]
         ts = w3.eth.get_block(raw['blockNumber']).timestamp
@@ -132,11 +137,6 @@ while block <= latest_block:
             frm = evt['args']['from'].lower()
             to = evt['args']['to'].lower()
             val = int(evt['args']['value']) / 1e18
-
-            # Skip initial AI EOA -> SmartAIWallet funding transfer (first only)
-            if not ai_funding_skipped and frm == WALLET_ADDRESS.lower() and to == WALLET_CONTRACT_ADDRESS.lower():
-                ai_funding_skipped = True
-                continue
 
             # Skip mints (from zero address)
             if frm == '0x0000000000000000000000000000000000000000':
@@ -153,13 +153,23 @@ while block <= latest_block:
 
             daily_volume[day] += val
 
+            # Categorize transfers
+            if frm == DEPLOYER.lower() and to != DEPLOYER.lower():
+                daily_deployer_to_user[day] += val
+            elif frm != DEPLOYER.lower() and to == DEPLOYER.lower():
+                daily_user_to_deployer[day] += val
+            elif frm != DEPLOYER.lower() and to != DEPLOYER.lower():
+                daily_user_to_user[day] += val
+
+            # Update balances from true holder count
+            balances_by_address[frm] -= val
+            balances_by_address[to] += val
+
             # Add non-deployer addresses to holders, senders, wallets
             if frm != DEPLOYER.lower():
-                holders_by_day[day].add(frm)
                 senders_by_day[day].add(frm)
                 wallets_by_day[day].add(frm)
             if to != DEPLOYER.lower():
-                holders_by_day[day].add(to)
                 wallets_by_day[day].add(to)
 
         elif topic == MINTING_HAPPENED_TOPIC:
@@ -169,6 +179,16 @@ while block <= latest_block:
         elif topic == BURNING_HAPPENED_TOPIC:
             amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
             daily_burned[day] += amount
+
+        # After processing each log, update true holders for the day
+        # (This ensures we have the latest state for the day)
+        true_holders = {
+            addr for addr, bal in balances_by_address.items()
+            if bal > 0
+            and addr != DEPLOYER.lower()
+            and addr != WALLET_CONTRACT_ADDRESS.lower()
+        }
+        true_holders_by_day[day] = true_holders
 
     raw_log_count += len(logs)
     block = to_block + 1
@@ -198,35 +218,55 @@ with engine.begin() as conn:
         raw_supply = wallet_contract.functions.readSupply().call()
         supply = raw_supply / 1e18
 
-        holders = holders_by_day.get(day, set())
+        try:
+            circulating_balance = token_contract.functions.balanceOf(DEPLOYER).call()
+            treasury_balance = token_contract.functions.balanceOf(WALLET_CONTRACT_ADDRESS).call()
+            circulating_balance = circulating_balance / 1e18
+            treasury_balance = treasury_balance / 1e18
+        except Exception as e:
+            print(f"Error fetching balances for {day}: {e}")
+            sys.exit(1)
+
+        # Use true holder count
+        holder_count = len(true_holders_by_day.get(day, set()))
         senders = senders_by_day.get(day, set())
         wallets = wallets_by_day.get(day, set())
 
         conn.execute(
             text("""
                 INSERT INTO daily_metrics(
-                    day, volume, holder_count, unique_senders, active_wallets, minted, burned, total_supply
+                    day, volume, circ_to_user, user_to_user, user_to_circ, holder_count, unique_senders, active_wallets, minted, burned, total_supply, circulating_balance, treasury_balance
                 ) VALUES (
-                    :day, :volume, :holder_count, :unique_senders, :active_wallets, :minted, :burned, :total_supply
+                    :day, :volume, :circ_to_user, :user_to_user, :user_to_circ, :holder_count, :unique_senders, :active_wallets, :minted, :burned, :total_supply, :circulating_balance, :treasury_balance
                 )
                 ON CONFLICT(day) DO UPDATE SET
                     volume         = excluded.volume,
+                    circ_to_user   = excluded.circ_to_user,
+                    user_to_user   = excluded.user_to_user,
+                    user_to_circ   = excluded.user_to_circ,
                     holder_count   = excluded.holder_count,
                     unique_senders = excluded.unique_senders,
                     active_wallets = excluded.active_wallets,
                     minted         = excluded.minted,
                     burned         = excluded.burned,
-                    total_supply   = excluded.total_supply;
+                    total_supply   = excluded.total_supply,
+                    circulating_balance = excluded.circulating_balance,
+                    treasury_balance = excluded.treasury_balance; 
             """),
             {
                 'day':             day,
                 'volume':          daily_volume.get(day, 0),
-                'holder_count':    len(holders),
+                'circ_to_user':    daily_deployer_to_user.get(day, 0),
+                'user_to_user':    daily_user_to_user.get(day, 0),
+                'user_to_circ':     daily_user_to_deployer.get(day, 0),
+                'holder_count':    holder_count,
                 'unique_senders':  len(senders),
                 'active_wallets':  len(wallets),
                 'minted':          daily_minted.get(day, 0),
                 'burned':          daily_burned.get(day, 0),
                 'total_supply':    supply,
+                'circulating_balance': circulating_balance,
+                'treasury_balance': treasury_balance
             }
         )
 
