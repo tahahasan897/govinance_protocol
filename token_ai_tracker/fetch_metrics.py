@@ -31,8 +31,8 @@ if not all([RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 # ─────── Constants ───────
-# zkSync closest block to start from there (It needs to be adjusted in the future runtime). 
-START_DEPLOY_BLOCK = (w3.eth.block_number) - 50
+# Closest block to start from recent - 50 blocks.
+START_DEPLOY_BLOCK = (w3.eth.block_number) - 1000
 
 # ─────── Load last processed block ───────
 def load_last_block(path: Path) -> int:
@@ -44,7 +44,7 @@ def load_last_block(path: Path) -> int:
 
 def save_last_block(path: Path, block: int) -> None:
     with path.open('w') as f:
-        json.dump({'last_block': block}, f)
+        json.dump({'last_block': block}, f, indent=2)
 
 with open(TOKEN_ABI_FILE) as f:
     token_abi = json.load(f)
@@ -83,14 +83,31 @@ daily_volume           = defaultdict(float)  # day -> total volume
 daily_deployer_to_user = defaultdict(float)
 daily_user_to_user     = defaultdict(float) 
 daily_user_to_deployer = defaultdict(float)
+daily_deployer_to_tres = defaultdict(float)  # deployer -> treasury
+daily_user_to_tres     = defaultdict(float)  # user -> treasury
 
 senders_by_day         = defaultdict(set)
 wallets_by_day         = defaultdict(set)
 daily_minted           = defaultdict(float)
 daily_burned           = defaultdict(float)
 
+# ─────── Persisted balances for cumulative holder tracking ───────
+BALANCES_PATH = SCRIPT_DIR / 'balances.json'
+
+def load_balances(path: Path) -> dict:
+    try:
+        with path.open() as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_balances(path: Path, balances: dict) -> None:
+    with path.open('w') as f:
+        json.dump(balances, f, indent=2)
+
 # Track balances for true holder count
-balances_by_address    = defaultdict(float)  # address -> balance
+balances_initial = load_balances(BALANCES_PATH)
+balances_by_address = defaultdict(float, {k: v for k, v in balances_initial.items()})
 true_holders_by_day    = defaultdict(set)    # day -> set(addresses with balance > 0)
 
 span  = 1_000
@@ -144,20 +161,21 @@ while block <= latest_block:
             # Skip burns (to zero address)
             if to == '0x0000000000000000000000000000000000000000':
                 continue
-            # Skip wallet <-> deployer transfers (both directions)
-            if (frm == WALLET_CONTRACT_ADDRESS.lower() and to == DEPLOYER.lower()) or (frm == DEPLOYER.lower() and to == WALLET_CONTRACT_ADDRESS.lower()):
-                continue
-            # Skip transfers involving treasury (except deployer → user)
-            if frm == WALLET_CONTRACT_ADDRESS.lower() or to == WALLET_CONTRACT_ADDRESS.lower():
+            # Skip transfers from treasury to deployer only
+            if frm == WALLET_CONTRACT_ADDRESS.lower() and to == DEPLOYER.lower():
                 continue
 
             daily_volume[day] += val
 
             # Categorize transfers
-            if frm == DEPLOYER.lower() and to != DEPLOYER.lower():
+            if frm == DEPLOYER.lower() and to == WALLET_CONTRACT_ADDRESS.lower():
+                daily_deployer_to_tres[day] += val
+            elif frm == DEPLOYER.lower() and to != DEPLOYER.lower():
                 daily_deployer_to_user[day] += val
             elif frm != DEPLOYER.lower() and to == DEPLOYER.lower():
                 daily_user_to_deployer[day] += val
+            elif frm != DEPLOYER.lower() and to == WALLET_CONTRACT_ADDRESS.lower():
+                daily_user_to_tres[day] += val
             elif frm != DEPLOYER.lower() and to != DEPLOYER.lower():
                 daily_user_to_user[day] += val
 
@@ -165,11 +183,11 @@ while block <= latest_block:
             balances_by_address[frm] -= val
             balances_by_address[to] += val
 
-            # Add non-deployer addresses to holders, senders, wallets
-            if frm != DEPLOYER.lower():
+            # Add non-deployer, non-treasury addresses to senders and active wallets
+            if frm not in {DEPLOYER.lower(), WALLET_CONTRACT_ADDRESS.lower()}:
                 senders_by_day[day].add(frm)
                 wallets_by_day[day].add(frm)
-            if to != DEPLOYER.lower():
+            if to not in {DEPLOYER.lower(), WALLET_CONTRACT_ADDRESS.lower()}:
                 wallets_by_day[day].add(to)
 
         elif topic == MINTING_HAPPENED_TOPIC:
@@ -180,18 +198,35 @@ while block <= latest_block:
             amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
             daily_burned[day] += amount
 
-        # After processing each log, update true holders for the day
-        # (This ensures we have the latest state for the day)
-        true_holders = {
-            addr for addr, bal in balances_by_address.items()
-            if bal > 0
-            and addr != DEPLOYER.lower()
-            and addr != WALLET_CONTRACT_ADDRESS.lower()
-        }
-        true_holders_by_day[day] = true_holders
+    # After processing all logs for this block range, update holder counts for each day
+    if logs:
+        # Get all unique days from the processed logs
+        processed_days = set()
+        for raw in logs:
+            ts = w3.eth.get_block(raw['blockNumber']).timestamp
+            day = datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d')
+            processed_days.add(day)
+        
+        # Update true holders for each day that had activity
+        for day in processed_days:
+            true_holders = {
+                addr for addr, bal in balances_by_address.items()
+                if bal > 0
+                and addr != DEPLOYER.lower()
+                and addr != WALLET_CONTRACT_ADDRESS.lower()
+            }
+            true_holders_by_day[day] = true_holders
 
     raw_log_count += len(logs)
     block = to_block + 1
+
+# Seed today's holder set if no activity days were processed
+if not true_holders_by_day:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    true_holders_by_day[today] = {
+        addr for addr, bal in balances_by_address.items()
+        if bal > 0 and addr not in {DEPLOYER.lower(), WALLET_CONTRACT_ADDRESS.lower()}
+    }
 
 # ─────── Ensure every day in range is present ───────
 # Find the earliest and latest day in the block range
@@ -209,6 +244,107 @@ else:
     # If there are no logs at all, just use today's date
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     day_list = [today]
+
+# ─────── Calculate holder count for all days ───────
+# For days with no activity, we still need to calculate the holder count
+
+def get_current_holder_count():
+    """Get current holder count by checking all historical transfer recipients"""
+    print("🔍 Getting current holder count from blockchain...")
+    try:
+        # Get all Transfer events from recent blocks to get addresses that might hold tokens
+        current_block = w3.eth.block_number
+        # Look back a reasonable amount of blocks to find potential holders
+        from_block = max(0, current_block - 100000)  # Look back ~100k blocks
+        
+        all_logs = w3.eth.get_logs({
+            'fromBlock': from_block,
+            'toBlock': 'latest',
+            'address': token_contract.address,
+            'topics': [TRANSFER_TOPIC]
+        })
+        
+        # Get all unique addresses that received tokens in recent history
+        all_addresses = set()
+        for log in all_logs:
+            evt = token_contract.events.Transfer().process_log(log)
+            frm = evt['args']['from'].lower()
+            to = evt['args']['to'].lower()
+            
+            # Add both sender and receiver (we'll check balances for all)
+            if frm != '0x0000000000000000000000000000000000000000':
+                all_addresses.add(frm)
+            if to != '0x0000000000000000000000000000000000000000':
+                all_addresses.add(to)
+        
+        # Check current balance for each address
+        current_holders = 0
+        for addr in all_addresses:
+            try:
+                if (addr != DEPLOYER.lower() and 
+                    addr != WALLET_CONTRACT_ADDRESS.lower()):
+                    balance = token_contract.functions.balanceOf(Web3.to_checksum_address(addr)).call()
+                    if balance > 0:
+                        current_holders += 1
+            except Exception as e:
+                continue
+                
+        print(f"📊 Found {current_holders} current holders")
+        return current_holders
+        
+    except Exception as e:
+        print(f"Error getting current holder count: {e}")
+        return 0
+
+# First, try to get holder count from the most recent day with transactions
+latest_holder_count = 0
+if true_holders_by_day:
+    # Get the holder count from the most recent day with activity
+    latest_day = max(true_holders_by_day.keys())
+    latest_holder_count = len(true_holders_by_day[latest_day])
+    print(f"Using holder count {latest_holder_count} from most recent active day: {latest_day}")
+else:
+    # If no recent activity, get actual current holder count from blockchain
+    latest_holder_count = get_current_holder_count()
+    
+    if latest_holder_count == 0:
+        # Fall back to database as last resort
+        print("No holders found from blockchain, checking database for last known holder count...")
+        try:
+            engine = create_engine(DB_PATH)
+            with engine.begin() as conn:
+                result = conn.execute(
+                    text("SELECT holder_count FROM daily_metrics ORDER BY day DESC LIMIT 1")
+                ).fetchone()
+                if result:
+                    latest_holder_count = result[0]
+                    print(f"Using last known holder count from database: {latest_holder_count}")
+                else:
+                    print("No historical data found in database")
+        except Exception as e:
+            print(f"Could not query database: {e}")
+
+# Build cumulative holder counts
+for day in day_list:
+    # Ensure every day has at least an empty set
+    true_holders_by_day.setdefault(day, set())
+
+cumulative_holders = set()
+for day in sorted(day_list):
+    # Add today's holders to cumulative set
+    cumulative_holders |= true_holders_by_day[day]
+    # Overwrite with full cumulative set
+    true_holders_by_day[day] = set(cumulative_holders)
+
+print("Cumulative holders per day:", [(d, len(true_holders_by_day[d])) for d in sorted(day_list)])
+
+# Fill missing days with previous day's holder set
+previous_holders = set()
+for day in sorted(day_list):
+    if day in true_holders_by_day and true_holders_by_day[day]:
+        previous_holders = true_holders_by_day[day]
+    else:
+        true_holders_by_day[day] = set(previous_holders)
 
 # ─────── Write to SQLite ───────
 engine = create_engine(DB_PATH)
@@ -235,30 +371,62 @@ with engine.begin() as conn:
         conn.execute(
             text("""
                 INSERT INTO daily_metrics(
-                    day, volume, circ_to_user, user_to_user, user_to_circ, holder_count, unique_senders, active_wallets, minted, burned, total_supply, circulating_balance, treasury_balance
+                    day,
+                    volume,
+                    circ_to_user,
+                    user_to_user,
+                    user_to_circ,
+                    circ_to_tres,
+                    user_to_tres,
+                    holder_count,
+                    unique_senders,
+                    active_wallets,
+                    minted,
+                    burned,
+                    total_supply,
+                    circulating_balance,
+                    treasury_balance
                 ) VALUES (
-                    :day, :volume, :circ_to_user, :user_to_user, :user_to_circ, :holder_count, :unique_senders, :active_wallets, :minted, :burned, :total_supply, :circulating_balance, :treasury_balance
+                    :day,
+                    :volume,
+                    :circ_to_user,
+                    :user_to_user,
+                    :user_to_circ,
+                    :circ_to_tres,
+                    :user_to_tres,
+                    :holder_count,
+                    :unique_senders,
+                    :active_wallets,
+                    :minted,
+                    :burned,
+                    :total_supply,
+                    :circulating_balance,
+                    :treasury_balance
                 )
                 ON CONFLICT(day) DO UPDATE SET
-                    volume         = excluded.volume,
-                    circ_to_user   = excluded.circ_to_user,
-                    user_to_user   = excluded.user_to_user,
-                    user_to_circ   = excluded.user_to_circ,
-                    holder_count   = excluded.holder_count,
-                    unique_senders = excluded.unique_senders,
-                    active_wallets = excluded.active_wallets,
-                    minted         = excluded.minted,
-                    burned         = excluded.burned,
-                    total_supply   = excluded.total_supply,
+                    volume          = excluded.volume,
+                    circ_to_user    = excluded.circ_to_user,
+                    user_to_user    = excluded.user_to_user,
+                    user_to_circ    = excluded.user_to_circ,
+                    circ_to_tres    = excluded.circ_to_tres,
+                    user_to_tres    = excluded.user_to_tres,
+                    holder_count    = excluded.holder_count,
+                    unique_senders  = excluded.unique_senders,
+                    active_wallets  = excluded.active_wallets,
+                    minted          = excluded.minted,
+                    burned          = excluded.burned,
+                    total_supply    = excluded.total_supply,
                     circulating_balance = excluded.circulating_balance,
-                    treasury_balance = excluded.treasury_balance; 
+                    treasury_balance    = excluded.treasury_balance;
             """),
             {
                 'day':             day,
                 'volume':          daily_volume.get(day, 0),
                 'circ_to_user':    daily_deployer_to_user.get(day, 0),
                 'user_to_user':    daily_user_to_user.get(day, 0),
-                'user_to_circ':     daily_user_to_deployer.get(day, 0),
+                'user_to_circ':    daily_user_to_deployer.get(day, 0),
+                'circ_to_tres':    daily_deployer_to_tres.get(day, 0),
+                'user_to_tres':    daily_user_to_tres.get(day, 0),
                 'holder_count':    holder_count,
                 'unique_senders':  len(senders),
                 'active_wallets':  len(wallets),
@@ -266,11 +434,13 @@ with engine.begin() as conn:
                 'burned':          daily_burned.get(day, 0),
                 'total_supply':    supply,
                 'circulating_balance': circulating_balance,
-                'treasury_balance': treasury_balance
+                'treasury_balance':    treasury_balance
             }
         )
 
 save_last_block(STATE_PATH, latest_block)
+# Save updated balances for next run
+save_balances(BALANCES_PATH, balances_by_address)
 
 print(f'➡️  Fetched {raw_log_count} raw logs.')
 print(f'✅  Ingest complete – bookmark saved at block {latest_block:,}.')

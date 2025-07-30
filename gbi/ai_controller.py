@@ -102,18 +102,14 @@ def get_decision():
 
 def send_transaction(percent):
     nonce = web3.eth.get_transaction_count(WALLET_ADDRESS)
-    try:
-        txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
-            {
-                "chainId": None, # Use the chain ID of the network you're connected to
-                "gas": 200000,
-                "gasPrice": web3.to_wei("20", "gwei"),
-                "nonce": nonce,
-            }
-        )
-    except Exception as e:
-        print(f"Enter the chain ID of the network you're connected to in the environment variable RPC_URL. Error: {e}")
-        return
+    txn = wallet_contract.functions.adjustSupply(percent).build_transaction(
+        {
+            "chainId": 11155111,
+            "gas": 200000,
+            "gasPrice": web3.to_wei("20", "gwei"),
+            "nonce": nonce,
+        }
+    )
 
     signed_txn = web3.eth.account.sign_transaction(txn, private_key=PRIVATE_KEY)
     tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)

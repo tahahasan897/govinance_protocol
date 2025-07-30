@@ -60,13 +60,15 @@ def demand_index(db_path, circulating_supply):
 
     # Fetch present week sums
     cur.execute("""
-        SELECT SUM(volume), SUM(user_to_circ), SUM(unique_senders), SUM(active_wallets)
+        SELECT SUM(volume), SUM(user_to_circ), SUM(circ_to_tres), SUM(user_to_tres), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
         WHERE day BETWEEN date('now', '-6 days', 'localtime') AND date('now', 'localtime');
     """)
-    v_sum, uc_sum, u_sum, a_sum = cur.fetchone()
+    v_sum, uc_sum, ct_sum, ut_sum, u_sum, a_sum = cur.fetchone()
     v_sum = float(v_sum or 0)
     uc_sum = float(uc_sum or 0)
+    ct_sum = float(ct_sum or 0)
+    ut_sum = float(ut_sum or 0)
     u_sum = int(u_sum or 0)
     a_sum = int(a_sum or 0)
 
@@ -96,9 +98,11 @@ def demand_index(db_path, circulating_supply):
     total_volume = cur.fetchone()
     total_volume = float(total_volume[0]) if total_volume and total_volume[0] is not None else 0.0
 
-    if uc_sum > 0:
-        v_sum = v_sum - uc_sum
-    
+    if (uc_sum or ct_sum or ut_sum) > 0:
+        unessary_sum = (uc_sum + ct_sum + ut_sum)
+        v_sum -= unessary_sum
+        total_volume -= unessary_sum
+
     if total_volume >= 50000.0:
         v_t = (v_sum / circulating_supply_tokens) * 100
         h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
