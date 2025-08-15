@@ -107,18 +107,18 @@ def demand_index(db_path, circulating_supply):
         v_sum -= unessary_sum
         total_volume -= unessary_sum
 
-    # if total_volume >= 50000.0:
-    v_t = (v_sum / circulating_supply_tokens) * 100
-    h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
-    c_t = (u_sum / a_sum) if a_sum else 0.0
+    if total_volume >= 50000.0:
+        v_t = (v_sum / circulating_supply_tokens) * 100
+        h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
+        c_t = (u_sum / a_sum) if a_sum else 0.0
 
-    w_v, w_h, w_c = 0.3, 0.5, 0.2
-    demand = round((w_v * v_t) + (w_h * h_t) + (w_c * c_t), 3)
-    conn.close()
-    return demand
-    # else:
-    #     conn.close()
-    #     return None
+        w_v, w_h, w_c = 0.3, 0.5, 0.2
+        demand = round((w_v * v_t) + (w_h * h_t) + (w_c * c_t), 3)
+        conn.close()
+        return demand
+    else:
+        conn.close()
+        return None
 
 def adaptive_threshold(demand, msct, ga=0.15, min_val=0.01, scarcity_factor=1.5):
     """
