@@ -1,2 +1,28 @@
 Activate virtual environment: source venv/bin/activate
 Deactivate virtual environment: deactivate 
+
+DROP VIEW IF EXISTS metrics_view;
+
+CREATE VIEW IF NOT EXISTS metrics_view AS
+SELECT 
+    day,
+    ROUND(volume, 1) as vol,
+    ROUND(circ_to_user, 1) as c2u,
+    ROUND(user_to_user, 1) as u2u,
+    ROUND(user_to_circ, 1) as u2c,
+    ROUND(circ_to_tres, 1) as c2t,
+    ROUND(user_to_tres, 1) as u2t,
+    holder_count as holders,
+    unique_senders as senders,
+    active_wallets as wallets,
+    ROUND(minted, 1) as mint,
+    ROUND(burned, 1) as burn,
+    ROUND(circulation_contraction, 1) as circ_con,
+    ROUND(total_supply, 0) as supply,
+    ROUND(circulating_balance, 1) as circ_bal,
+    ROUND(treasury_balance, 1) as tres_bal
+FROM daily_metrics
+ORDER BY day;
+
+.headers on
+.mode column

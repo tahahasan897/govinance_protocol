@@ -56,8 +56,9 @@ export const ethereumSepolia = defineChain({
     }
 });
 
-const password = "your_secure_password"; // replace with your actual password
+const password = "jel";
 const hash = ethers.keccak256(ethers.toUtf8Bytes(password));
+console.log("The password is:", password);
 console.log("Password hash:", hash);
 
 

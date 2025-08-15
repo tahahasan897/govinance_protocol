@@ -19,6 +19,7 @@ import os
 from dotenv import load_dotenv
 import json 
 import sys
+import csv
 
 # Load environment variables from the repository root so that this module works
 # regardless of where it's executed from.
@@ -31,6 +32,9 @@ DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 
 # Path to persist the msct value between runs
 MSCT_STATE_PATH = os.path.join(REPO_ROOT, "msct_state.json")
+
+# Path to the log file
+LOG_PATH = os.path.join(REPO_ROOT, "metrics_log.csv")
 
 
 def load_msct(path: str, default: float = 0.5) -> float:
@@ -103,38 +107,80 @@ def demand_index(db_path, circulating_supply):
         v_sum -= unessary_sum
         total_volume -= unessary_sum
 
-    if total_volume >= 50000.0:
-        v_t = (v_sum / circulating_supply_tokens) * 100
-        h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
-        c_t = (u_sum / a_sum) if a_sum else 0.0
+    # if total_volume >= 50000.0:
+    v_t = (v_sum / circulating_supply_tokens) * 100
+    h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
+    c_t = (u_sum / a_sum) if a_sum else 0.0
 
-        w_v, w_h, w_c = 0.3, 0.5, 0.2
-        demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
-        conn.close()
-        return demand
-    else:
-        conn.close()
-        return None
+    w_v, w_h, w_c = 0.3, 0.5, 0.2
+    demand = round((w_v * v_t) + (w_h * h_t) + (w_c * c_t), 3)
+    conn.close()
+    return demand
+    # else:
+    #     conn.close()
+    #     return None
 
-def adaptive_threshold(demand, msct, ga=0.15):
-    """Adaptive threshold calculation. The value that gets returned is the new msct."""
-    new_value = msct * (1 + ga * (demand - msct))
-    msct = new_value
-
-    return msct 
+def adaptive_threshold(demand, msct, ga=0.15, min_val=0.01, scarcity_factor=1.5):
+    """
+    Adaptive threshold that follows demand trends with enhanced scarcity mechanism.
+    - Follows demand in both positive and negative territories
+    - When demand falls below threshold, adjusts more aggressively (overshooting)
+    - Creates temporary scarcity to increase token value during downturns
+    """
+    # Safety check (maintain a minimum positive value)
+    if msct <= 0:
+        msct = min_val
+    
+    # Calculate gap percentage
+    gap_percent = (demand - msct) / msct if msct else 0
+    
+    if gap_percent > 0:  # Demand exceeds threshold - increase threshold
+        # Normal upward adjustment (capped at 30%)
+        adjustment = min(ga * gap_percent, 0.3)
+    else:  # Threshold exceeds demand - decrease threshold more aggressively
+        # Enhanced downward adjustment using scarcity_factor (capped at 40%)
+        # This will make threshold temporarily go below demand
+        adjustment = max(ga * gap_percent * scarcity_factor, -0.4)
+    
+    # Apply adjustment
+    new_msct = msct * (1 + adjustment)
+    
+    # Ensure threshold doesn't go too close to zero
+    # Even with negative demand, keep some minimal positive threshold
+    return max(min_val, round(new_msct, 3))
 
 def heat_gap(demand, threshold):
     """Heat gap calculation."""
     g_t = demand - threshold
 
-    return g_t
+    return round(g_t, 3)
 
-def percent_rule(g_t, msct, k=0.5, contraction_bias=1.2):
+def percent_rule(g_t, msct, k=0.5, contraction_bias=2.0):
     """Percent rule calculation."""
     if g_t < 0:
-        return k * (g_t / msct) * contraction_bias / 10 if msct else 0
+        return k * (g_t / msct) * contraction_bias / 40 if msct else 0
     else:
-        return k * (g_t / msct) / 10 if msct else 0
+        return k * (g_t / msct) / 40 if msct else 0
+    
+def log_run(day, demand, threshold, heat_gap, percent, ai_balance=None, deployer_balance=None):
+    """Log the run data to a file, including AI and deployer balances."""
+    header = ["day","demand_index","threshold","heat_gap","percent","ai_balance","deployer_balance"]
+    row = [
+        day, 
+        demand,
+        threshold, 
+        heat_gap,
+        percent,
+        ai_balance,
+        deployer_balance
+    ]
+    
+    write_header = not os.path.exists(LOG_PATH)
+    with open(LOG_PATH, "a", newline="") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(header)
+        writer.writerow(row)
 
 if __name__ == "__main__":
     circulating_supply = None # Enter a demo value of the circulating supply

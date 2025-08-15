@@ -67,6 +67,12 @@ BURNING_HAPPENED_TOPIC = event_abi_to_log_topic({
     "name": "BurningHappened",
     "type": "event"
 })
+CIRCULATION_CONTRACTION_TOPIC = event_abi_to_log_topic({
+    "anonymous": False,
+    "inputs": [{"indexed": False, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "CirculationContraction",
+    "type": "event"
+})
 
 last_block   = load_last_block(STATE_PATH)
 start_block  = max(last_block + 1, START_DEPLOY_BLOCK)
@@ -85,6 +91,7 @@ daily_user_to_user     = defaultdict(float)
 daily_user_to_deployer = defaultdict(float)
 daily_deployer_to_tres = defaultdict(float)  # deployer -> treasury
 daily_user_to_tres     = defaultdict(float)  # user -> treasury
+daily_circ_contraction = defaultdict(float)  # circulation contraction events
 
 senders_by_day         = defaultdict(set)
 wallets_by_day         = defaultdict(set)
@@ -197,6 +204,10 @@ while block <= latest_block:
         elif topic == BURNING_HAPPENED_TOPIC:
             amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
             daily_burned[day] += amount
+
+        elif topic == CIRCULATION_CONTRACTION_TOPIC:
+            amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
+            daily_circ_contraction[day] += amount
 
     # After processing all logs for this block range, update holder counts for each day
     if logs:
@@ -383,6 +394,7 @@ with engine.begin() as conn:
                     active_wallets,
                     minted,
                     burned,
+                    circulation_contraction,
                     total_supply,
                     circulating_balance,
                     treasury_balance
@@ -399,42 +411,45 @@ with engine.begin() as conn:
                     :active_wallets,
                     :minted,
                     :burned,
+                    :circulation_contraction,
                     :total_supply,
                     :circulating_balance,
                     :treasury_balance
                 )
                 ON CONFLICT(day) DO UPDATE SET
-                    volume          = excluded.volume,
-                    circ_to_user    = excluded.circ_to_user,
-                    user_to_user    = excluded.user_to_user,
-                    user_to_circ    = excluded.user_to_circ,
-                    circ_to_tres    = excluded.circ_to_tres,
-                    user_to_tres    = excluded.user_to_tres,
-                    holder_count    = excluded.holder_count,
-                    unique_senders  = excluded.unique_senders,
-                    active_wallets  = excluded.active_wallets,
-                    minted          = excluded.minted,
-                    burned          = excluded.burned,
-                    total_supply    = excluded.total_supply,
-                    circulating_balance = excluded.circulating_balance,
-                    treasury_balance    = excluded.treasury_balance;
+                    volume                  = excluded.volume,
+                    circ_to_user            = excluded.circ_to_user,
+                    user_to_user            = excluded.user_to_user,
+                    user_to_circ            = excluded.user_to_circ,
+                    circ_to_tres            = excluded.circ_to_tres,
+                    user_to_tres            = excluded.user_to_tres,
+                    holder_count            = excluded.holder_count,
+                    unique_senders          = excluded.unique_senders,
+                    active_wallets          = excluded.active_wallets,
+                    minted                  = excluded.minted,
+                    burned                  = excluded.burned,
+                    circulation_contraction = excluded.circulation_contraction,
+                    total_supply            = excluded.total_supply,
+                    circulating_balance     = excluded.circulating_balance,
+                    treasury_balance        = excluded.treasury_balance;
             """),
             {
-                'day':             day,
-                'volume':          daily_volume.get(day, 0),
-                'circ_to_user':    daily_deployer_to_user.get(day, 0),
-                'user_to_user':    daily_user_to_user.get(day, 0),
-                'user_to_circ':    daily_user_to_deployer.get(day, 0),
-                'circ_to_tres':    daily_deployer_to_tres.get(day, 0),
-                'user_to_tres':    daily_user_to_tres.get(day, 0),
-                'holder_count':    holder_count,
-                'unique_senders':  len(senders),
-                'active_wallets':  len(wallets),
-                'minted':          daily_minted.get(day, 0),
-                'burned':          daily_burned.get(day, 0),
-                'total_supply':    supply,
-                'circulating_balance': circulating_balance,
-                'treasury_balance':    treasury_balance
+                'day':                      day,
+                'volume':                   daily_volume.get(day, 0),
+                'circ_to_user':             daily_deployer_to_user.get(day, 0),
+                'user_to_user':             daily_user_to_user.get(day, 0),
+                'user_to_circ':             daily_user_to_deployer.get(day, 0),
+                'circ_to_tres':             daily_deployer_to_tres.get(day, 0),
+                'user_to_tres':             daily_user_to_tres.get(day, 0),
+                'holder_count':             holder_count,
+                'unique_senders':           len(senders),
+                'active_wallets':           len(wallets),
+                'minted':                   daily_minted.get(day, 0),
+                'burned':                   daily_burned.get(day, 0),
+                'circulation_contraction':  daily_circ_contraction.get(day, 0),
+                'total_supply':             supply,
+                'circulating_balance':      circulating_balance,
+                'treasury_balance':         treasury_balance
             }
         )
 
