@@ -248,7 +248,7 @@ The matter of relying on the deployer to distribute the tokens into whether it b
    ```
 
 4. **Set up environment variables:**  
-   Create a `.env` or `necessities.env` file in the project root with:
+   Create a `necessities.env` file in the project root with:
    ```
    PRIVATE_KEY=
    WALLET_ADDRESS=
