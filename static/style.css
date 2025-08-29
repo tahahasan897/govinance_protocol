@@ -347,6 +347,19 @@ a.logo:active {
     transition: opacity 0.2s;
 }
 
+/* Position the connect button at the top center */
+#connectButton {
+    flex-basis: 100%;
+    max-width: fit-content;
+    margin: 0 auto 1rem;
+}
+
+/* Style the fund button */
+#fundButton {
+    background: blue;
+    color: white;
+}
+
 .fund-page button:hover {
     opacity: 0.8;
 }
