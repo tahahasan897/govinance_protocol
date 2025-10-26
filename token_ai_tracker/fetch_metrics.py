@@ -31,7 +31,11 @@ if not all([RPC_URL, TOKEN_CONTRACT_ADDRESS, WALLET_CONTRACT_ADDRESS, TOKEN_ABI_
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 # ─────── Constants ───────
+<<<<<<< HEAD
 # Closest block to start from recent - 1000 blocks.
+=======
+# Closest block to start from recent - 50 blocks.
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 START_DEPLOY_BLOCK = (w3.eth.block_number) - 1000
 
 # ─────── Load last processed block ───────
@@ -67,6 +71,12 @@ BURNING_HAPPENED_TOPIC = event_abi_to_log_topic({
     "name": "BurningHappened",
     "type": "event"
 })
+CIRCULATION_CONTRACTION_TOPIC = event_abi_to_log_topic({
+    "anonymous": False,
+    "inputs": [{"indexed": False, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "CirculationContraction",
+    "type": "event"
+})
 
 last_block   = load_last_block(STATE_PATH)
 start_block  = max(last_block + 1, START_DEPLOY_BLOCK)
@@ -79,12 +89,22 @@ if start_block > latest_block:
 print(f'🔄 Processing blocks {start_block:,} → {latest_block:,} …')
 
 # ─────── Aggregation containers ───────
+<<<<<<< HEAD
 daily_volume           = defaultdict(float)  
 daily_deployer_to_user = defaultdict(float)
 daily_user_to_user     = defaultdict(float) 
 daily_user_to_deployer = defaultdict(float)
 daily_deployer_to_tres = defaultdict(float)  
 daily_user_to_tres     = defaultdict(float)  
+=======
+daily_volume           = defaultdict(float)  # day -> total volume
+daily_deployer_to_user = defaultdict(float)
+daily_user_to_user     = defaultdict(float) 
+daily_user_to_deployer = defaultdict(float)
+daily_deployer_to_tres = defaultdict(float)  # deployer -> treasury
+daily_user_to_tres     = defaultdict(float)  # user -> treasury
+daily_circ_contraction = defaultdict(float)  # circulation contraction events
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 
 senders_by_day         = defaultdict(set)
 wallets_by_day         = defaultdict(set)
@@ -198,6 +218,12 @@ while block <= latest_block:
             amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
             daily_burned[day] += amount
 
+<<<<<<< HEAD
+=======
+        elif topic == CIRCULATION_CONTRACTION_TOPIC:
+            amount = int.from_bytes(raw['data'], byteorder='big') / 1e18
+            daily_circ_contraction[day] += amount
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 
     # After processing all logs for this block range, update holder counts for each day
     if logs:
@@ -384,6 +410,10 @@ with engine.begin() as conn:
                     active_wallets,
                     minted,
                     burned,
+<<<<<<< HEAD
+=======
+                    circulation_contraction,
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                     total_supply,
                     circulating_balance,
                     treasury_balance
@@ -400,6 +430,10 @@ with engine.begin() as conn:
                     :active_wallets,
                     :minted,
                     :burned,
+<<<<<<< HEAD
+=======
+                    :circulation_contraction,
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                     :total_supply,
                     :circulating_balance,
                     :treasury_balance
@@ -416,6 +450,10 @@ with engine.begin() as conn:
                     active_wallets          = excluded.active_wallets,
                     minted                  = excluded.minted,
                     burned                  = excluded.burned,
+<<<<<<< HEAD
+=======
+                    circulation_contraction = excluded.circulation_contraction,
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                     total_supply            = excluded.total_supply,
                     circulating_balance     = excluded.circulating_balance,
                     treasury_balance        = excluded.treasury_balance;
@@ -433,6 +471,10 @@ with engine.begin() as conn:
                 'active_wallets':           len(wallets),
                 'minted':                   daily_minted.get(day, 0),
                 'burned':                   daily_burned.get(day, 0),
+<<<<<<< HEAD
+=======
+                'circulation_contraction':  daily_circ_contraction.get(day, 0),
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                 'total_supply':             supply,
                 'circulating_balance':      circulating_balance,
                 'treasury_balance':         treasury_balance

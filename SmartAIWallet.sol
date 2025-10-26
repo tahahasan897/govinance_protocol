@@ -251,6 +251,7 @@ contract SmartAIWallet {
      *      • Password protection prevents unauthorized changes
      *      • Immediate effect on AI controller permissions
      *      • Event emission for security monitoring
+<<<<<<< HEAD
      */
     function migrateOnlyAI(address to, string memory password) external onlyWithPassword(password) {
         aiController = to;
@@ -279,6 +280,36 @@ contract SmartAIWallet {
      *      • percent = -5e16 → -5% supply contraction
      */
     function scheduledAdjustSupply(int256 percent) external onlyAI {
+=======
+     */
+    function migrateOnlyAI(address to, string memory password) external onlyWithPassword(password) {
+        aiController = to;
+        emit AIControllerUpdated(to);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    AI-CONTROLLED OPERATIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice AI-controlled token supply adjustment with time restrictions
+     * @param percent Percentage change in supply (scaled by 1e18)
+     * @dev Production AI Controls:
+     *      • Weekly execution limit prevents rapid market manipulation
+     *      • Saturday-only execution provides predictable timing
+     *      • AI can analyze full week of market data before adjustment
+     * 
+     * @dev Time Lock Security:
+     *      • Prevents AI from making emotional or rapid decisions
+     *      • Allows market time to react to previous adjustments
+     *      • Provides transparency with predictable timing
+     * 
+     * @dev Economic Impact Examples:
+     *      • percent = 1e17 → +10% supply expansion
+     *      • percent = -5e16 → -5% supply contraction
+     */
+    function adjustSupply(int256 percent) external onlyAI {
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
         // Time-based restrictions for production stability
         uint256 dayOfWeek = (block.timestamp / 1 days + 4) % 7;
         require(dayOfWeek == 6, "Can only call on Saturday");

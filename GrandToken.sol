@@ -2,25 +2,43 @@
 pragma solidity ^0.8.17;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+<<<<<<< HEAD
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol"; 
 
 /**
  * @title Grand (GRD) - AI-Controlled Economic Token
+=======
+
+/**
+ * @title Grand: Governed By Intelligence (GBI) - AI-Controlled Economic Token
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
  * @author By Taha Hasan
  * @notice This contract implements an ERC20 token with AI-controlled supply management
  * @dev Production Features:
  *      • Dynamic supply adjustment based on AI economic analysis
  *      • Automated token distribution between treasury and circulation
+<<<<<<< HEAD
  *      • Only owner protected migration capabilities
+=======
+ *      • Password-protected emergency migration capabilities
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
  *      • Gas-optimized deployment with post-deployment initialization
  *
  * @dev Token Economics:
  *      • Initial Supply: 1,000,000 Grand Tokens
+<<<<<<< HEAD
  *      • Deployer (circulation) receives: 250,000 Grand Tokens (25% - for liquidity provision)
  *      • Wallet Treasury receives: 750,000 Grand Tokens (75% - for supply management)
  *      • No maximum supply cap - AI can mint/burn based on data conditions
  */
 contract GrandToken is ERC20, Ownable {
+=======
+ *      • Deployer receives: 250,000 Grand Tokens (25% - for liquidity provision)
+ *      • AI Treasury receives: 750,000 Grand Tokens (75% - for supply management)
+ *      • No maximum supply cap - AI can mint/burn based on economic conditions
+ */
+contract GrandToken is ERC20 {
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
     /*//////////////////////////////////////////////////////////////
                             PRODUCTION STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -43,16 +61,35 @@ contract GrandToken is ERC20, Ownable {
 
     /// @notice Address authorized to execute AI-controlled supply adjustments
     /// @dev Should be set to the SmartAIWallet contract address
+<<<<<<< HEAD
     address public wallet;
 
     /// @notice Contract deployer address for initial liquidity provision
     /// @dev Receives 25% of initial supply and migration capabilities
     address public deployer; 
+=======
+    address public aiController;
+
+    /// @notice Contract deployer address for initial liquidity provision
+    /// @dev Receives 25% of initial supply and migration capabilities
+    address public deployer;
+
+    /// @notice Initial admin who deployed the contract (for initialization only)
+    /// @dev Used to restrict initialize() function to original deployer
+    address private _initialAdmin;
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 
     /// @notice Prevents multiple initialization calls
     /// @dev Security measure to ensure initialization happens only once
     bool private _initialized = false;
 
+<<<<<<< HEAD
+=======
+    /// @notice Hashed password for emergency migration operations
+    /// @dev Provides additional security layer for critical functions
+    bytes32 private passwordHash;
+
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
     /*//////////////////////////////////////////////////////////////
                             PRODUCTION EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -67,9 +104,20 @@ contract GrandToken is ERC20, Ownable {
     /// @dev Monitor this for deflationary periods and supply tracking
     event BurningHappened(uint256 amount);
 
+<<<<<<< HEAD
     /// @notice Emitted when deployer tokens are migrated to new address
     /// @param from Original deployer address
     /// @param to New deployer or another contract address
+=======
+    /// @notice Emitted when the factor is negative, used for double the scarcity operation
+    /// @param amount number of tokens to transfer to treasury (scaled by 1e18)
+    /// @dev Monitor this for extra deflationary periods and supply tracking
+    event CirculationContraction(uint256 amount);
+
+    /// @notice Emitted when deployer tokens are migrated to new address
+    /// @param from Original deployer address
+    /// @param to New deployer address
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
     /// @param amount Number of tokens migrated
     /// @dev Critical security event - monitor for unauthorized migrations
     event CirculationMigrated(address indexed from, address indexed to, uint256 amount);
@@ -78,6 +126,7 @@ contract GrandToken is ERC20, Ownable {
                         GAS-OPTIMIZED CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
+<<<<<<< HEAD
     /*
      * @notice  Gas-optimized constructor for production deployment
      * @param   Initiating an owner to control specific functions
@@ -96,6 +145,34 @@ contract GrandToken is ERC20, Ownable {
     /// @dev Used for automated supply management functions
     modifier onlyWallet() {
         require(msg.sender == wallet, "Caller is not wallet");
+=======
+    /**
+     * @notice Gas-optimized constructor for production deployment
+     * @param _passwordHash Keccak256 hash of the emergency migration password
+     * @dev Minimal constructor reduces deployment gas costs
+     *      Actual setup is performed in initialize() function post-deployment
+     */
+    constructor(bytes32 _passwordHash) ERC20("GRAND", "GBI") {
+        passwordHash = _passwordHash;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        PRODUCTION ACCESS MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Restricts function access to AI controller only
+    /// @dev Used for automated supply management functions
+    modifier onlyAI() {
+        require(msg.sender == aiController, "Caller is not AI");
+        _;
+    }
+
+    /// @notice Requires correct password for emergency operations
+    /// @dev Provides additional security for critical migration functions
+    /// @param password Plain text password (hashed and compared)
+    modifier onlyWithPassword(string memory password) {
+        require(keccak256(abi.encodePacked(password)) == passwordHash, "Incorrect password");
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
         _;
     }
 
@@ -103,6 +180,7 @@ contract GrandToken is ERC20, Ownable {
                     EMERGENCY MIGRATION CAPABILITIES
     //////////////////////////////////////////////////////////////*/
 
+<<<<<<< HEAD
     /*
      * @notice Migration of deployer's circulation tokens
      * @param to New address to receive all of the circulating tokens
@@ -126,6 +204,30 @@ contract GrandToken is ERC20, Ownable {
         deployer = to;
 
         emit CirculationMigrated(from, to, amount);
+=======
+    /**
+     * @notice Emergency migration of deployer's circulation tokens
+     * @param to New address to receive all deployer tokens
+     * @param password Emergency migration password
+     * @dev Production Use Cases:
+     *      • Wallet compromise recovery
+     *      • Address updates for operational security
+     *      • Team member changes requiring token custody transfer
+     *
+     * @dev Security Features:
+     *      • Password protection prevents unauthorized access
+     *      • Updates deployer reference for future operations
+     *      • Emits event for monitoring and audit trails
+     */
+    function migrateCirculation(address to, string memory password) external onlyWithPassword(password) {
+        uint256 amount = balanceOf(deployer);
+        require(amount > 0, "Nothing to migrate");
+
+        _transfer(deployer, to, amount);
+        deployer = to;
+
+        emit CirculationMigrated(deployer, to, amount);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -134,9 +236,16 @@ contract GrandToken is ERC20, Ownable {
 
     /**
      * @notice One-time initialization after deployment for gas optimization
+<<<<<<< HEAD
      * @param _wallet Address of the SmartAIWallet contract
      * @dev Production Setup Process:
      *      1. Deploy GrandToken with minimal gas
+=======
+     * @param _aiController Address of the AI controller (SmartAIWallet contract)
+     * @param _deployer Address to receive initial circulation tokens
+     * @dev Production Setup Process:
+     *      1. Deploy GrandToken with minimal gas (with password has)
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
      *      2. Deploy SmartAIWallet with token reference
      *      3. Call initialize() to set up addresses and mint/create tokens
      *
@@ -146,6 +255,7 @@ contract GrandToken is ERC20, Ownable {
      *      • Validates initialization caller
      *
      * @dev Token Distribution:
+<<<<<<< HEAD
      *      • 250,000 GRD → deployer (for liquidity)
      *      • 750,000 GRD → AI treasury (for supply management)
      */
@@ -158,6 +268,21 @@ contract GrandToken is ERC20, Ownable {
         // Initial token distribution for production launch
         _mint(deployer, CIRCULATING_CAP); // 250,000 tokens for liquidity
         _mint(wallet, INITIAL_SUPPLY - CIRCULATING_CAP); // 750,000 tokens for AI treasury
+=======
+     *      • 250,000 GBI → deployer (for liquidity)
+     *      • 750,000 GBI → AI treasury (for supply management)
+     */
+    function initialize(address _aiController, address _deployer) public {
+        require(!_initialized, "Already initialized");
+
+        _initialAdmin = msg.sender;
+        deployer = _deployer;
+        aiController = _aiController;
+
+        // Initial token distribution for production launch
+        _mint(deployer, CIRCULATING_CAP); // 250,000 tokens for liquidity
+        _mint(aiController, INITIAL_SUPPLY - CIRCULATING_CAP); // 750,000 tokens for AI treasury
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 
         totalReleased = CIRCULATING_CAP; // Track initial circulation
         _initialized = true; // One-time usage
@@ -193,7 +318,11 @@ contract GrandToken is ERC20, Ownable {
      *      • Monitor BurningHappened events for deflation tracking
      *      • Track totalReleased for circulation analysis
      */
+<<<<<<< HEAD
     function adjustSupply(int256 factor) external onlyWallet {
+=======
+    function adjustSupply(int256 factor) external onlyAI {
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
         require(factor != 0, "Percent is zero");
 
         uint256 absFactor = uint256(factor > 0 ? factor : -factor);
@@ -205,14 +334,22 @@ contract GrandToken is ERC20, Ownable {
             /* ========== SUPPLY EXPANSION LOGIC ========== */
 
             uint256 released;
+<<<<<<< HEAD
             uint256 treasuryBal = balanceOf(wallet);
+=======
+            uint256 treasuryBal = balanceOf(aiController);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 
             /* Phase 1: Release existing treasury tokens */
             if (treasuryBal > 0) {
                 released = delta > treasuryBal ? treasuryBal : delta;
 
                 if (released > 0) {
+<<<<<<< HEAD
                     _transfer(wallet, deployer, released);
+=======
+                    _transfer(aiController, deployer, released);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                     totalReleased += released;
                     delta -= released; // Calculate remaining demand
                 }
@@ -220,19 +357,28 @@ contract GrandToken is ERC20, Ownable {
 
             /* Phase 2: Mint new tokens if treasury insufficient */
             if (delta > 0) {
+<<<<<<< HEAD
                 _mint(wallet, delta);
+=======
+                _mint(aiController, delta);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                 emit MintingHappened(delta);
 
                 // Automatic circulation injection (50% of minted tokens)
                 uint256 autoTransfer = delta / 2;
                 if (autoTransfer > 0) {
+<<<<<<< HEAD
                     _transfer(wallet, deployer, autoTransfer);
+=======
+                    _transfer(aiController, deployer, autoTransfer);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
                     totalReleased += autoTransfer;
                 }
             }
         } else {
             /* ========== SUPPLY CONTRACTION LOGIC ========== */
 
+<<<<<<< HEAD
             uint256 actualBurn = delta > balanceOf(wallet) ? balanceOf(wallet) : delta;
 
             // Burn from AI treasury (if possible)
@@ -240,6 +386,25 @@ contract GrandToken is ERC20, Ownable {
                 _burn(wallet, actualBurn);
                 emit BurningHappened(actualBurn);
             }
+=======
+            uint256 actualBurn = delta > balanceOf(aiController) ? balanceOf(aiController) : delta;
+
+            // Take delta of deployer as well for double burning operations
+            uint256 deployerDelta = (absFactor * balanceOf(deployer)) / SCALE;
+            uint256 actualDeployerDelta = deployerDelta > balanceOf(deployer) ? balanceOf(deployer) : deployerDelta;
+
+            // Burn from AI treasury (if possible)
+            if (actualBurn > 0) {
+                _burn(aiController, actualBurn);
+                emit BurningHappened(actualBurn);
+            }
+
+            // Then do circulation contraction for extra scarcity
+            if (actualDeployerDelta > 0) {
+                _transfer(deployer, aiController, actualDeployerDelta);
+                emit CirculationContraction(actualDeployerDelta);
+            }
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
         }
     }
 }

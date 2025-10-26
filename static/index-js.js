@@ -58,7 +58,11 @@ export const ethereumSepolia = defineChain({
 
 const password = "jel";
 const hash = ethers.keccak256(ethers.toUtf8Bytes(password));
+<<<<<<< HEAD
 console.log("The password is:", password); 
+=======
+console.log("The password is:", password);
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 console.log("Password hash:", hash);
 
 
@@ -159,7 +163,7 @@ async function getBalance() {
     console.log("Contract balance:", formatEther(balance), "ETH");
 }
 
-async function claim () {
+async function claim() {
     if (!window.ethereum) return alert("Connect wallet first!")
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
     const address = accounts[0]
@@ -259,5 +263,9 @@ if (approveButton) approveButton.onclick = approve;
 if (transferButton) transferButton.onclick = transfer;
 if (transferButton) transferFromButton.onclick = transferFrom;
 if (allowanceButton) allowanceButton.onclick = allowance;
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
 

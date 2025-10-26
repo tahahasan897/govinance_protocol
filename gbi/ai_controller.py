@@ -143,4 +143,8 @@ if __name__ == "__main__":
         percent,
         ai_balance,
         deployer_balance
+<<<<<<< HEAD
     )
+=======
+    )
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6

@@ -1,5 +1,6 @@
 // constants-js.js
 
+<<<<<<< HEAD
 export const walletContractAddress = "0xda387efa8cbDb73d22E5271979c8eF43D53F5af2";
 export const tokenContractAddress = "0x4150e3c98ACBe1d1d6cfd7b7e1f34c456d20D9d9"; 
 
@@ -807,3 +808,15 @@ export const walletABI = [
     "anonymous": false
   }
 ]
+=======
+export const walletContractAddress = "";
+export const tokenContractAddress = "";
+
+export const tokenABI = [
+  // Your token ABI goes here
+];
+
+export const walletABI = [
+  // Your wallet ABI goes here
+];
+>>>>>>> 190fbe7157f7c0dd8bb1f979608cc444d8e967c6
