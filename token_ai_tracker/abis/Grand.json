@@ -1,7 +1,13 @@
 [
     {
         "type": "constructor",
-        "inputs": [],
+        "inputs": [
+            {
+                "name": "_passwordHash",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
         "stateMutability": "nonpayable"
     },
     {
@@ -42,19 +48,6 @@
         ],
         "outputs": [],
         "stateMutability": "nonpayable"
-    },
-    {
-        "type": "function",
-        "name": "aiController",
-        "inputs": [],
-        "outputs": [
-            {
-                "name": "",
-                "type": "address",
-                "internalType": "address"
-            }
-        ],
-        "stateMutability": "view"
     },
     {
         "type": "function",
@@ -202,7 +195,7 @@
         "name": "initialize",
         "inputs": [
             {
-                "name": "_aiController",
+                "name": "_wallet",
                 "type": "address",
                 "internalType": "address"
             },
@@ -210,6 +203,24 @@
                 "name": "_deployer",
                 "type": "address",
                 "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "migrateCirculation",
+        "inputs": [
+            {
+                "name": "to",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "password",
+                "type": "string",
+                "internalType": "string"
             }
         ],
         "outputs": [],
@@ -321,6 +332,19 @@
         "stateMutability": "nonpayable"
     },
     {
+        "type": "function",
+        "name": "wallet",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
         "type": "event",
         "name": "Approval",
         "inputs": [
@@ -349,6 +373,44 @@
         "type": "event",
         "name": "BurningHappened",
         "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CirculationContraction",
+        "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CirculationMigrated",
+        "inputs": [
+            {
+                "name": "from",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "to",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
             {
                 "name": "amount",
                 "type": "uint256",

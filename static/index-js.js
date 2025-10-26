@@ -9,6 +9,7 @@ import {
     defineChain
 } from "https://esm.sh/viem";
 import { walletContractAddress, tokenContractAddress, walletABI, tokenABI } from "./constants-js.js";
+import { ethers } from "https://esm.sh/ethers@6.8.1";
 
 // manually define zkSync Sepolia
 // const zksyncSepolia = {
@@ -55,7 +56,11 @@ export const ethereumSepolia = defineChain({
     }
 });
 
-console.log("Loaded tokenABI:", tokenABI)
+const password = "jel";
+const hash = ethers.keccak256(ethers.toUtf8Bytes(password));
+console.log("The password is:", password); 
+console.log("Password hash:", hash);
+
 
 const connectButton = document.getElementById("connectButton");
 const fundButton = document.getElementById("fundButton");
@@ -255,3 +260,4 @@ if (transferButton) transferButton.onclick = transfer;
 if (transferButton) transferFromButton.onclick = transferFrom;
 if (allowanceButton) allowanceButton.onclick = allowance;
   
+

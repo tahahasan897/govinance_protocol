@@ -300,7 +300,7 @@ class CountN_Tests(unittest.TestCase, Util):
         self.assertRaises(TypeError, count_n, a, 7.0)
         self.assertRaises(ValueError, count_n, a, 0, 2)
         self.assertRaisesMessage(ValueError, "n = 1 larger than bitarray "
-                                 "size (len(a) = 0)", count_n, a, 1)
+                                 "length 0", count_n, a, 1)
 
     def test_simple(self):
         a = bitarray('111110111110111110111110011110111110111110111000')
@@ -309,21 +309,10 @@ class CountN_Tests(unittest.TestCase, Util):
         self.assertEqual(a.count(), 37)
         self.assertEqual(a.count(0), 11)
 
+        self.assertEqual(count_n(a, 0), 0)
         self.assertEqual(count_n(a, 0, 0), 0)
         self.assertEqual(count_n(a, 2, 0), 12)
         self.assertEqual(count_n(a, 10, 0), 47)
-        # n < 0
-        self.assertRaisesMessage(ValueError, "non-negative integer expected",
-                                 count_n, a, -1, 0)
-        # n > len(a)
-        self.assertRaisesMessage(ValueError, "n = 49 larger than bitarray "
-                                 "size (len(a) = 48)", count_n, a, 49, 0)
-        # n > a.count(0)
-        self.assertRaisesMessage(ValueError, "n = 12 exceeds total count "
-                                 "(a.count(0) = 11)",
-                                 count_n, a, 12, 0)
-
-        self.assertEqual(count_n(a, 0), 0)
         self.assertEqual(count_n(a, 20), 23)
         self.assertEqual(count_n(a, 20, 1), 23)
         self.assertEqual(count_n(a, 37), 45)
@@ -332,10 +321,13 @@ class CountN_Tests(unittest.TestCase, Util):
                                  count_n, a, -1)
         # n > len(a)
         self.assertRaisesMessage(ValueError, "n = 49 larger than bitarray "
-                                 "size (len(a) = 48)", count_n, a, 49)
+                                 "length 48", count_n, a, 49)
+        # n > a.count(0)
+        self.assertRaisesMessage(ValueError, "n = 12 exceeds total count "
+                                 "(a.count(0) = 11)", count_n, a, 12, 0)
         # n > a.count(1)
         self.assertRaisesMessage(ValueError, "n = 38 exceeds total count "
-                                 "(a.count(1) = 37)", count_n, a, 38)
+                                 "(a.count(1) = 37)", count_n, a, 38, 1)
 
         for v in 0, 1:
             for n in range(a.count(v) + 1):
@@ -345,7 +337,7 @@ class CountN_Tests(unittest.TestCase, Util):
                 self.assertEqual(i, self.count_n(a if v else ~a, n))
         self.assertEQUAL(a, b)
 
-    def test_frozen(self):
+    def test_frozenbitarray(self):
         a = frozenbitarray('001111101111101111101111100111100')
         self.assertEqual(len(a), 33)
         self.assertEqual(a.count(), 24)
@@ -359,7 +351,7 @@ class CountN_Tests(unittest.TestCase, Util):
             self.check_result(a, n, count_n(a, n))
 
     def test_ones(self):
-        n = randint(1, 100000)
+        n = randint(1, 100_000)
         a = ones(n)
         self.assertEqual(count_n(a, n), n)
         self.assertRaises(ValueError, count_n, a, 1, 0)
@@ -369,7 +361,7 @@ class CountN_Tests(unittest.TestCase, Util):
             self.assertEqual(count_n(a, i), i)
 
     def test_one_set(self):
-        n = randint(1, 100000)
+        n = randint(1, 100_000)
         a = zeros(n)
         self.assertEqual(count_n(a, 0), 0)
         self.assertRaises(ValueError, count_n, a, 1)
@@ -384,17 +376,16 @@ class CountN_Tests(unittest.TestCase, Util):
         for N in range(1, 1000):
             a = zeros(N)
             a[-1] = 1
-            self.assertEqual(a.count(), 1)
             self.assertEqual(count_n(a, 1), N)
             if N == 1:
-                msg = "n = 2 larger than bitarray size (len(a) = 1)"
+                msg = "n = 2 larger than bitarray length 1"
             else:
                 msg = "n = 2 exceeds total count (a.count(1) = 1)"
             self.assertRaisesMessage(ValueError, msg, count_n, a, 2)
 
     def test_large(self):
         for _ in range(100):
-            N = randint(100000, 250000)
+            N = randint(100_000, 250_000)
             a = bitarray(N)
             v = getrandbits(1)
             a.setall(not v)
@@ -411,15 +402,6 @@ class CountN_Tests(unittest.TestCase, Util):
                 n = randint(0, tc)
                 i = count_n(a, n, v)
                 self.check_result(a, n, i, v)
-
-    def test_random(self):
-        for a in self.randombitarrays():
-            v = getrandbits(1)
-            n = a.count(v) // 2
-            i = count_n(a, n, v)
-            self.check_result(a, n, i, v)
-            # n = 0 -> count_n always 0
-            self.assertEqual(count_n(a, 0, v), 0)
 
 # ---------------------------------------------------------------------------
 
@@ -697,10 +679,13 @@ class ByteswapTests(unittest.TestCase, Util):
         byteswap(a)
         self.assertEqual(a, bitarray("01010101 11110000"))
 
-        a = bitarray("11110000 1111")
+        a = bitarray("01111000 1001")
+        b = a.copy()
+        a.tobytes()  # clear padbits
         byteswap(a)
+        self.assertEqual(a, bitarray("10010000 0111"))
         byteswap(a)
-        self.assertEqual(a, bitarray("11110000 1111"))
+        self.assertEqual(a, b)
 
     def test_basic_array(self):
         r = os.urandom(64)
@@ -1220,7 +1205,7 @@ class BaseTests(unittest.TestCase, Util):
         for m, n, alphabet in self.alphabets:
             for i in range(256):
                 c = chr(i)
-                if c in alphabet or c in WHITESPACE:
+                if c in alphabet or c.isspace():
                     continue
                 if n == 16 and c in "ABCDEF":
                     continue
@@ -1335,20 +1320,16 @@ class SC_Tests(unittest.TestCase, Util):
             ValueError, "decode error (n=3): 32768 >= 32768",
             sc_decode, b"\x02\x00\x80\xc3\x01\x00\x80\x00\0")
 
-        if PTRSIZE == 4:
-            msg = "read 4 bytes got negative value: -2147483648"
-        else:
-            msg = "decode error (n=4): 2147483648 >= 16"
+        msg = {4: "read 4 bytes got negative value: -2147483648",
+               8: "decode error (n=4): 2147483648 >= 16"}
         self.assertRaisesMessage(
-            ValueError, msg,
+            ValueError, msg[PTRSIZE],
             sc_decode, b"\x01\x10\xc4\x01\x00\x00\x00\x80\0")
 
-        if PTRSIZE == 4:
-            msg = "read 4 bytes got negative value: -1"
-        else:
-            msg = "decode error (n=4): 4294967295 >= 16"
+        msg = {4: "read 4 bytes got negative value: -1",
+               8: "decode error (n=4): 4294967295 >= 16"}
         self.assertRaisesMessage(
-            ValueError, msg,
+            ValueError, msg[PTRSIZE],
             sc_decode, b"\x01\x10\xc4\x01\xff\xff\xff\xff\0")
 
     def test_decode_end_of_stream(self):
@@ -1458,10 +1439,21 @@ class SC_Tests(unittest.TestCase, Util):
             self.assertEqual(m, len(sc_encode(a)))
             self.round_trip(a)
 
-        a = zeros(1 << 25, 'big')
-        a[0] = 1
-        self.assertEqual(sc_encode(a),
-                         b'\x14\x00\x00\x00\x02\xc4\x01\x00\x00\x00\x00\x00')
+    def test_encode_type4(self):
+        a = zeros(1 << 26, 'big')
+        self.assertEqual(
+            sc_encode(a),
+            b'\x14\x00\x00\x00\x04\0')
+
+        a[0xccbbaa] = 1
+        self.assertEqual(
+            sc_encode(a),
+            b'\x14\x00\x00\x00\x04\xc4\x01\xaa\xbb\xcc\x00\0')
+
+        a[0x3ffeedd] = 1
+        self.assertEqual(
+            sc_encode(a),
+            b'\x14\x00\x00\x00\x04\xc4\x02\xaa\xbb\xcc\x00\xdd\xee\xff\x03\0')
 
     def test_encode_ones(self):
         for _ in range(50):
@@ -1470,9 +1462,10 @@ class SC_Tests(unittest.TestCase, Util):
             m = 2                                # head byte and stop byte
             m += bits2bytes(nbits.bit_length())  # size bytes
             nbytes = bits2bytes(nbits)
-            m += (nbytes // 32 + 127) // 128  # number of blocks (head bytes)
-            m += bool(nbytes % 32)            # block type 0 range(1, 32)
             m += nbytes                       # actual raw bytes
+            # number of head bytes, all of block type 0:
+            m += bool(nbytes % 32)            # number in 0x01 .. 0x1f
+            m += (nbytes // 32 + 127) // 128  # number in 0x20 .. 0xbf
             self.assertEqual(m, len(sc_encode(a)))
             self.round_trip(a)
 
@@ -1485,25 +1478,22 @@ class SC_Tests(unittest.TestCase, Util):
                 a &= urandom(n, endian)
                 self.round_trip(a)
 
-# -----------------------  _sc_rts()   (running totals)  --------------------
+# -----------------  _sc_rts()   (running totals debug test)  ---------------
 
 @skipIf(not DEBUG)
 class RTS_Tests(unittest.TestCase):
-
-    # Internal functionality exposed for the purpose of testing.
-    # This class will only be part of the test suite in debug mode.
 
     def test_segsize(self):
         self.assertIsInstance(_SEGSIZE, int)
         self.assertTrue(_SEGSIZE in [8, 16, 32])
 
-    def test_rts_empty(self):
+    def test_empty(self):
         rts = _sc_rts(bitarray())
         self.assertEqual(len(rts), 1)
         self.assertEqual(rts, [0])
 
     @skipIf(SEGBITS != 256)
-    def test_rts_example(self):
+    def test_example(self):
         # see example before sc_calc_rts() in _util.c
         a = zeros(987)
         a[:5] = a[512:515] = a[768:772] = 1
@@ -1513,26 +1503,28 @@ class RTS_Tests(unittest.TestCase):
         self.assertEqual(len(rts), 5)
         self.assertEqual(rts, [0, 5, 5, 8, 12])
 
-    def test_rts_ones(self):
-        for _ in range(20):
-            n = randrange(10000)
+    @staticmethod
+    def nseg(a):  # number of segments
+        return (a.nbytes + _SEGSIZE - 1) // _SEGSIZE
+
+    def test_ones(self):
+        for n in range(1000):
             a = ones(n)
             rts = _sc_rts(a)
-            self.assertEqual(len(rts), (n + SEGBITS - 1) // SEGBITS + 1)
+            self.assertEqual(len(rts), self.nseg(a) + 1)
             self.assertEqual(rts[0], 0)
             self.assertEqual(rts[-1], n)
             for i, v in enumerate(rts):
                 self.assertEqual(v, min(SEGBITS * i, n))
 
-    def test_rts_random(self):
-        for _ in range(20):
-            n = randrange(10000)
-            a = urandom(n)
+    def test_random(self):
+        for _ in range(200):
+            a = urandom_2(randrange(10000))
             rts = _sc_rts(a)
-            self.assertEqual(len(rts), (n + SEGBITS - 1) // SEGBITS + 1)
+            self.assertEqual(len(rts), self.nseg(a) + 1)
             self.assertEqual(rts[0], 0)
             self.assertEqual(rts[-1], a.count())
-            for i in range(len(rts) - 1):
+            for i in range(self.nseg(a)):
                 seg_pop = a.count(1, SEGBITS * i, SEGBITS * (i + 1))
                 self.assertEqual(rts[i + 1] - rts[i], seg_pop)
 
@@ -1663,6 +1655,7 @@ class VLFTests(unittest.TestCase, Util):
         c = a.copy()
         s = vl_encode(a)
         b = vl_decode(s)
+        self.check_obj(b)
         self.assertTrue(a == b == c)
         LEN_PAD_BITS = 3
         self.assertEqual(len(s), (len(a) + LEN_PAD_BITS + 6) // 7)
@@ -1671,13 +1664,10 @@ class VLFTests(unittest.TestCase, Util):
         padding = (head & 0x70) >> 4
         self.assertEqual(len(a) + padding, 7 * len(s) - LEN_PAD_BITS)
 
-    def test_range(self):
-        for n in range(500):
-            self.round_trip(urandom(n))
-
     def test_large(self):
-        a = urandom(randint(50000, 100000))
-        self.round_trip(a)
+        for _ in range(10):
+            a = urandom(randrange(100_000))
+            self.round_trip(a)
 
     def test_random(self):
         for a in self.randombitarrays():
@@ -2056,8 +2046,7 @@ class SerializationTests(unittest.TestCase, Util):
                 self.assertRaises(ValueError, deserialize, b)
                 check_msg(b)
 
-    def test_bits_ignored(self):
-        # the unused padding bits (with the last bytes) are ignored
+    def test_padbits_ignored(self):
         for blob, endian in [
                 (b'\x07\x01', 'little'),
                 (b'\x07\x03', 'little'),
@@ -2515,7 +2504,6 @@ class CountFromWord_Tests(unittest.TestCase, Util):
             i = randrange(16)
             res = _count_from_word(a, i)
             self.assertEqual(res, a[64 * i:].count())
-            self.assertEqual(res, a.count(1, 64 * i))
 
 
 @skipIf(not DEBUG)

@@ -19,6 +19,7 @@ import os
 from dotenv import load_dotenv
 import json 
 import sys
+import csv
 
 # Load environment variables from the repository root so that this module works
 # regardless of where it's executed from.
@@ -31,6 +32,9 @@ DB_PATH = os.getenv("DB_PATH", "token_metrics.db")
 
 # Path to persist the msct value between runs
 MSCT_STATE_PATH = os.path.join(REPO_ROOT, "msct_state.json")
+
+# Path to the log file
+LOG_PATH = os.path.join(REPO_ROOT, "metrics_log.csv")
 
 
 def load_msct(path: str, default: float = 0.5) -> float:
@@ -50,19 +54,25 @@ def save_msct(path: str, value: float) -> None:
 # Dynamic msct loaded from persistent storage
 msct = load_msct(MSCT_STATE_PATH)
 
+
 def demand_index(db_path, circulating_supply):
+    """Calculate the demand index based on the present week's metrics."""
+
     circulating_supply_tokens = circulating_supply / 1e18
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
     # Fetch present week sums
     cur.execute("""
-        SELECT SUM(volume), SUM(unique_senders), SUM(active_wallets)
+        SELECT SUM(volume), SUM(user_to_circ), SUM(circ_to_tres), SUM(user_to_tres), SUM(unique_senders), SUM(active_wallets)
         FROM daily_metrics
-        WHERE day BETWEEN date('now', '-6 days') AND date('now');
+        WHERE day BETWEEN date('now', '-6 days', 'localtime') AND date('now', 'localtime');
     """)
-    v_sum, u_sum, a_sum = cur.fetchone()
+    v_sum, uc_sum, ct_sum, ut_sum, u_sum, a_sum = cur.fetchone()
     v_sum = float(v_sum or 0)
+    uc_sum = float(uc_sum or 0)
+    ct_sum = float(ct_sum or 0)
+    ut_sum = float(ut_sum or 0)
     u_sum = int(u_sum or 0)
     a_sum = int(a_sum or 0)
 
@@ -79,50 +89,103 @@ def demand_index(db_path, circulating_supply):
     cur.execute("""
         SELECT holder_count
         FROM daily_metrics
-        WHERE day = date('now', '-7 days')
+        WHERE day = date('now', '-6 days', 'localtime')
         LIMIT 1; 
     """)
     row = cur.fetchone()
-    h_prev = int(row[0]) if row and row[0] is not None else None
+    h_prev = int(row[0]) if row and row[0] is not None else 0
 
-    # If no previous week or not enough volume, do not adjust
-    if v_sum <= 125000.0 or h_prev == None:
+    cur.execute("""
+        SELECT SUM(volume) 
+        FROM daily_metrics
+    """)
+    total_volume = cur.fetchone()
+    total_volume = float(total_volume[0]) if total_volume and total_volume[0] is not None else 0.0
+
+    if (uc_sum or ct_sum or ut_sum) > 0:
+        unessary_sum = (uc_sum + ct_sum + ut_sum)
+        v_sum -= unessary_sum
+        total_volume -= unessary_sum
+
+    if total_volume >= 50000.0:
+        v_t = (v_sum / circulating_supply_tokens) * 100
+        h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
+        c_t = (u_sum / a_sum) if a_sum else 0.0
+
+        w_v, w_h, w_c = 0.3, 0.5, 0.2
+        demand = round((w_v * v_t) + (w_h * h_t) + (w_c * c_t), 3)
+        conn.close()
+        return demand
+    else:
         conn.close()
         return None
 
-    v_t = (v_sum / circulating_supply_tokens) * 100
-    h_t = (h_this - h_prev) / h_prev if h_prev else 0.0
-    c_t = (u_sum / a_sum) if a_sum else 0.0
-
-    w_v, w_h, w_c = 0.5, 0.3, 0.2
-    demand = (w_v * v_t) + (w_h * h_t) + (w_c * c_t)
-    conn.close()
-
-    return demand
-
-def adaptive_threshold(demand, msct, ga=0.2):
-    """Adaptive threshold calculation. The value that gets returned is the new msct."""
-    new_value = msct * (1 + ga * (demand - msct))
-    msct = new_value
-
-    return msct 
+def adaptive_threshold(demand, msct, ga=0.15, min_val=0.01, scarcity_factor=1.5):
+    """
+    Adaptive threshold that follows demand trends with enhanced scarcity mechanism.
+    - Follows demand in both positive and negative territories
+    - When demand falls below threshold, adjusts more aggressively (overshooting)
+    - Creates temporary scarcity to increase token value during downturns
+    """
+    # Safety check (maintain a minimum positive value)
+    if msct <= 0:
+        msct = min_val
+    
+    # Calculate gap percentage
+    gap_percent = (demand - msct) / msct if msct else 0
+    
+    if gap_percent > 0:  # Demand exceeds threshold - increase threshold
+        # Normal upward adjustment (capped at 30%)
+        adjustment = min(ga * gap_percent, 0.3)
+    else:  # Threshold exceeds demand - decrease threshold more aggressively
+        # Enhanced downward adjustment using scarcity_factor (capped at 40%)
+        # This will make threshold temporarily go below demand
+        adjustment = max(ga * gap_percent * scarcity_factor, -0.4)
+    
+    # Apply adjustment
+    new_msct = msct * (1 + adjustment)
+    
+    # Ensure threshold doesn't go too close to zero
+    # Even with negative demand, keep some minimal positive threshold
+    return max(min_val, round(new_msct, 3))
 
 def heat_gap(demand, threshold):
     """Heat gap calculation."""
     g_t = demand - threshold
 
-    return g_t
+    return round(g_t, 3)
 
-def percent_rule(g_t, msct, k=0.6, pmax=0.05):
+def percent_rule(g_t, msct, k=0.5, contraction_bias=2.0):
     """Percent rule calculation."""
-    # raw = k * g_t / msct if msct else 0
-    # return max(-pmax, min(raw, pmax))
-    return k * g_t / msct if msct else 0 
+    if g_t < 0:
+        return k * (g_t / msct) * contraction_bias / 40 if msct else 0
+    else:
+        return k * (g_t / msct) / 40 if msct else 0
+    
+def log_run(day, demand, threshold, heat_gap, percent, ai_balance=None, deployer_balance=None):
+    """Log the run data to a file, including AI and deployer balances."""
+    header = ["day","demand_index","threshold","heat_gap","percent","ai_balance","deployer_balance"]
+    row = [
+        day, 
+        demand,
+        threshold, 
+        heat_gap,
+        percent,
+        ai_balance,
+        deployer_balance
+    ]
+    
+    write_header = not os.path.exists(LOG_PATH)
+    with open(LOG_PATH, "a", newline="") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(header)
+        writer.writerow(row)
 
 if __name__ == "__main__":
-    circulating_supply = 100000 # Enter a demo value of the circulating supply
+    circulating_supply = None # Enter a demo value of the circulating supply
     if circulating_supply is None:
-        raise ValueError("Enter the circulating supply value.")
+        raise ValueError("Enter the circulating supply value (Check gbi/functions.py at the initializer).")
 
     the_demand = demand_index(DB_PATH, circulating_supply)
     if the_demand is None:
